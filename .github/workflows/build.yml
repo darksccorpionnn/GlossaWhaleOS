@@ -6,10 +6,8 @@ on:
     paths:
       - 'source-parts/alpha2-a.b64'
       - 'source-parts/alpha2-b.b64'
-      - 'source-parts/alpha3-ocr-test.patch'
-      - 'source-parts/alpha4-tv-ocr.patch.gz.b64.part00'
-      - 'source-parts/alpha4-tv-ocr.patch.gz.b64.part01'
-      - 'source-parts/alpha4-tv-ocr.patch.gz.b64.part02'
+      - 'source-parts/alpha4-tv-from-alpha2.patch.gz.b64.part00'
+      - 'source-parts/alpha4-tv-from-alpha2.patch.gz.b64.part01'
       - '.github/workflows/build.yml'
 
 jobs:
@@ -25,16 +23,16 @@ jobs:
           echo "b44ff1d70cc2bd7e231d12a2d1a6495e4091e98b3c000255066112e04c735ee7  source-alpha2.zip" | sha256sum --check
           unzip -t source-alpha2.zip
           unzip -q source-alpha2.zip
-          patch --batch -d . -p1 < source-parts/alpha3-ocr-test.patch
           python3 source-parts/alpha4-apply.py
-          cat source-parts/alpha4-tv-ocr.patch.gz.b64.part00 source-parts/alpha4-tv-ocr.patch.gz.b64.part01 source-parts/alpha4-tv-ocr.patch.gz.b64.part02 | base64 --decode | gzip --decompress > /tmp/alpha4-tv-ocr.patch
+          cat source-parts/alpha4-tv-from-alpha2.patch.gz.b64.part00 source-parts/alpha4-tv-from-alpha2.patch.gz.b64.part01 | base64 --decode | gzip --decompress > /tmp/alpha4-tv-ocr.patch
           patch --batch -d . -p1 < /tmp/alpha4-tv-ocr.patch
           python3 - <<'PY'
           from pathlib import Path
           for module in ("phone", "tv"):
               path = Path("GlossaWhaleOS") / module / "build.gradle.kts"
               source = path.read_text()
-              source = source.replace("versionCode = 3", "versionCode = 4")
+              source = source.replace("versionCode = 2", "versionCode = 4").replace("versionCode = 3", "versionCode = 4")
+              source = source.replace("0.1.0-alpha2", "0.3.0-alpha4-ocr-translate")
               source = source.replace("0.2.0-alpha3-ocr-test", "0.3.0-alpha4-ocr-translate")
               source = source.replace("0.2.0-alpha3-ocr-bridge", "0.3.0-alpha4-ocr-translate")
               path.write_text(source)
