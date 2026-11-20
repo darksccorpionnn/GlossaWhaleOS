@@ -56,3 +56,11 @@ The Chiaki-ng Android TV port states its project is licensed under AGPL-3.0-only
 - OCR output is translated and appears over the HDMI picture.
 - A DualShock 4 connected directly to PS4 continues to control the main local user during the video-only Remote Play session.
 - Connection loss, app exit, and HDMI input loss recover without leaving a black screen.
+
+## Progress log — 2026-11-20
+
+- Created isolated branch `feature/remote-play-integration`; `main` remains unchanged.
+- Alpha 4 source patch adds a phone-only translation mode that starts the local server without enabling microphone capture. The server accepts PIN-protected `POST /translate?pin=...` requests, sends recognised text to the existing Gemini translation helper, and publishes the Turkish result through the existing TV subtitle SSE channel.
+- The source preparation and both existing phone/TV modules compiled successfully in GitHub Actions run https://github.com/darksccorpionnn/GlossaWhaleOS/actions/runs/44810365447. This validates compilation only; the HTTP translation route has not yet been exercised on the user's devices.
+- Added `remote/chiaki-ng-androidtv` as a pinned Git submodule at `8346914c4f00b739d41111239698f5c031097f1b`. The CI job now initialises its nested native dependencies and is checking whether its Android TV APK builds with the hosted NDK/CMake toolchain.
+- The existing GlossaSub TV app still does not contain the Chiaki session, OCR-frame feed, or video-only controller bypass. Those remain the core next integration tasks, and no combined user-facing APK should be called complete until the acceptance criteria above pass.
