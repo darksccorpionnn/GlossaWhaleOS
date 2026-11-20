@@ -1,0 +1,107 @@
+--- a/GlossaWhaleOS/phone/src/main/java/com/darkscorpion/glossasub/phone/SubtitleService.kt
++++ b/GlossaWhaleOS/phone/src/main/java/com/darkscorpion/glossasub/phone/SubtitleService.kt
+@@
+         const val ACTION_START = "com.darkscorpion.glossasub.START"
++        const val ACTION_START_TEXT_TRANSLATION = "com.darkscorpion.glossasub.START_TEXT_TRANSLATION"
+         const val ACTION_TEST = "com.darkscorpion.glossasub.TEST"
+@@
+     private var apiKey = ""
+     private var language = "en-US"
++    private var translationOnly = false
+@@
+             ACTION_START -> {
+                 apiKey = intent.getStringExtra("apiKey").orEmpty()
+                 language = intent.getStringExtra("language")?.takeIf { it.isNotBlank() } ?: "en-US"
+-                startForegroundCompat()
++                translationOnly = false
++                startForegroundCompat(microphone = true)
+                 startServer()
+                 startRecognition()
+             }
++            ACTION_START_TEXT_TRANSLATION -> {
++                apiKey = intent.getStringExtra("apiKey").orEmpty()
++                translationOnly = true
++                startForegroundCompat(microphone = false)
++                startServer()
++                sendStatus("Görüntü yazısı çeviri sunucusu hazır · mikrofon kapalı", localIpv4(), pin)
++            }
+@@
+-    private fun startForegroundCompat() {
++    private fun startForegroundCompat(microphone: Boolean) {
+@@
+-        if (Build.VERSION.SDK_INT >= 29) {
+-            startForeground(1, notification, android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE)
++        if (Build.VERSION.SDK_INT >= 29 && microphone) {
++            startForeground(1, notification, android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE)
++        } else if (Build.VERSION.SDK_INT >= 29) {
++            startForeground(1, notification, android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
+         } else startForeground(1, notification)
+@@
+-            while (true) { val h = reader.readLine() ?: break; if (h.isEmpty()) break }
++            val headers = HashMap<String, String>()
++            while (true) {
++                val h = reader.readLine() ?: break
++                if (h.isEmpty()) break
++                val separator = h.indexOf(':')
++                if (separator > 0) headers[h.substring(0, separator).trim().lowercase()] = h.substring(separator + 1).trim()
++            }
+             val parts = request.split(" ")
+             val path = parts.getOrNull(1).orEmpty()
+             if (path.startsWith("/health")) {
+                 writeHttp(socket, 200, "application/json", "{\"ok\":true,\"app\":\"GlossaSubPhone\"}")
+                 socket.close(); return
+             }
+-            if (!path.startsWith("/events")) {
+-                writeHttp(socket, 404, "text/plain", "Not found")
+-                socket.close(); return
+-            }
+             val query = path.substringAfter('?', "").split('&').mapNotNull {
+                 val p = it.split('=', limit = 2); if (p.size == 2) URLDecoder.decode(p[0], "UTF-8") to URLDecoder.decode(p[1], "UTF-8") else null
+             }.toMap()
+             if (query["pin"] != pin) {
+                 writeHttp(socket, 403, "text/plain", "Wrong pairing code")
+                 socket.close(); return
+             }
++            if (path.startsWith("/translate")) {
++                if (parts.firstOrNull() != "POST") {
++                    writeHttp(socket, 405, "text/plain", "POST required")
++                    socket.close(); return
++                }
++                if (!translationOnly || apiKey.isBlank()) {
++                    writeHttp(socket, 409, "application/json", "{\"ok\":false,\"error\":\"Text translation server is not active\"}")
++                    socket.close(); return
++                }
++                val contentLength = headers["content-length"]?.toIntOrNull()?.coerceIn(0, 8192) ?: 0
++                if (contentLength <= 0) {
++                    writeHttp(socket, 400, "application/json", "{\"ok\":false,\"error\":\"Missing request body\"}")
++                    socket.close(); return
++                }
++                val body = CharArray(contentLength)
++                var bodyRead = 0
++                while (bodyRead < contentLength) {
++                    val count = reader.read(body, bodyRead, contentLength - bodyRead)
++                    if (count < 0) break
++                    bodyRead += count
++                }
++                if (bodyRead != contentLength) {
++                    writeHttp(socket, 400, "application/json", "{\"ok\":false,\"error\":\"Incomplete request body\"}")
++                    socket.close(); return
++                }
++                val source = JSONObject(String(body)).optString("text").trim()
++                if (source.isBlank() || source.length > 1200) {
++                    writeHttp(socket, 400, "application/json", "{\"ok\":false,\"error\":\"Text must contain 1-1200 characters\"}")
++                    socket.close(); return
++                }
++                val translated = GeminiTranslator.translate(apiKey, source).ifBlank { source }
++                broadcastEvent("subtitle", JSONObject().put("text", translated).put("duration", 5000).put("replace", true))
++                sendStatus("Görüntü yazısı çevrildi: \${source.take(90)}", localIpv4(), pin)
++                writeHttp(socket, 200, "application/json", JSONObject().put("ok", true).put("translated", translated).toString())
++                socket.close(); return
++            }
++            if (!path.startsWith("/events")) {
++                writeHttp(socket, 404, "text/plain", "Not found")
++                socket.close(); return
++            }
+@@
+-        val prompt = "Translate this spoken English video-game dialogue into natural, concise Turkish subtitle text. " +
++        val prompt = "Translate this English video-game subtitle or dialogue into natural, concise Turkish subtitle text. " +
