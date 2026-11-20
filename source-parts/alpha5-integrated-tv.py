@@ -121,14 +121,8 @@ replace_once(
 \t\t\t}""",
     r"""\t\t\tis StreamStateQuit -> {
 \t\t\t\tval quit = state as StreamStateQuit
-\t\t\t\tif(session.disconnecting)
-\t\t\t\t\t{}
-\t\t\t\telse
-\t\t\t\t{
-\t\t\t\t\t// Show native disconnect details for non-error quits instead of silently
-\t\t\t\t\t// returning to the home screen on Android TV.
-\t\t\t\t\tquitDialog = quit
-\t\t\t\t}
+\t\t\t\t// Always show the quit reason, even if Chiaki has marked the session disconnecting.
+\t\t\t\tquitDialog = quit
 \t\t\t}"""
 )
 
