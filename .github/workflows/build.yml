@@ -7,7 +7,10 @@ on:
       - 'source-parts/alpha2-a.b64'
       - 'source-parts/alpha2-b.b64'
       - 'source-parts/alpha3-ocr-test.patch'
-      - 'source-parts/alpha4-apply.py'
+      - 'source-parts/alpha4-combined.patch.gz.b64.part00'
+      - 'source-parts/alpha4-combined.patch.gz.b64.part01'
+      - 'source-parts/alpha4-combined.patch.gz.b64.part02'
+      - 'source-parts/alpha4-combined.patch.gz.b64.part03'
       - '.github/workflows/build.yml'
 
 jobs:
@@ -15,8 +18,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Fetch pinned Chiaki Remote Play source
-        run: git submodule update --init --recursive remote/chiaki-ng-androidtv
       - name: Reassemble and verify source archive
         shell: bash
         run: |
@@ -25,8 +26,8 @@ jobs:
           echo "b44ff1d70cc2bd7e231d12a2d1a6495e4091e98b3c000255066112e04c735ee7  source-alpha2.zip" | sha256sum --check
           unzip -t source-alpha2.zip
           unzip -q source-alpha2.zip
-          patch -d . -p1 < source-parts/alpha3-ocr-test.patch
-          python3 source-parts/alpha4-apply.py
+          cat source-parts/alpha4-combined.patch.gz.b64.part00 source-parts/alpha4-combined.patch.gz.b64.part01 source-parts/alpha4-combined.patch.gz.b64.part02 source-parts/alpha4-combined.patch.gz.b64.part03 | base64 --decode | gzip --decompress > /tmp/alpha4-combined.patch
+          patch --batch -d . -p1 < /tmp/alpha4-combined.patch
           python3 - <<'PY'
           from pathlib import Path
           tv_source = Path("GlossaWhaleOS/tv/src/main/java/com/darkscorpion/glossasub/tv/TvActivity.kt")
