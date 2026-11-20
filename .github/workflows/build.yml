@@ -1,0 +1,35 @@
+name: Build Android APKs
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'GlossaWhaleOS-source-alpha2.zip'
+      - '.github/workflows/build.yml'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extract source
+        run: unzip -q GlossaWhaleOS-source-alpha2.zip
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - name: Install Android SDK
+        run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+      - uses: gradle/gradle-build-action@v3
+        with:
+          gradle-version: '8.11.1'
+          arguments: -p GlossaWhaleOS --no-daemon :phone:assembleDebug :tv:assembleDebug
+      - name: Upload debug APKs
+        uses: actions/upload-artifact@v4
+        with:
+          name: GlossaWhaleOS-debug-apks
+          path: |
+            GlossaWhaleOS/phone/build/outputs/apk/debug/*.apk
+            GlossaWhaleOS/tv/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
