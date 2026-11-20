@@ -12,7 +12,7 @@
 +            this.text = "Görüntü yazısı çeviri sunucusunu başlat"
 +            setOnClickListener { startTextTranslationServer() }
 +        }, matchWidth())
-         content.addView(text("Not: İlk sürüm telefonun mikrofonunu kullanır. Telefonu TV hoparlörünü duyabileceği bir yere koy. HDMI sesini doğrudan telefona aktardığını varsaymıyoruz.", 14f))
+         content.addView(text("Görsel altyazı modunda telefon mikrofonu kullanılmaz; TV uygulaması OCR ile okuduğu yazıyı yerel ağ üzerinden bu telefona gönderir. Sesli dinleme modu ayrı olarak kullanılabilir.", 14f))
 @@
      private fun matchWidth() = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
          bottomMargin = 8
