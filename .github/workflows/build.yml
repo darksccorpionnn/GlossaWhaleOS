@@ -7,6 +7,9 @@ on:
       - 'source-parts/alpha2-a.b64'
       - 'source-parts/alpha2-b.b64'
       - 'source-parts/alpha3-ocr-test.patch'
+      - 'source-parts/alpha4-text-translation.patch'
+      - 'source-parts/alpha4-text-translation-service.patch'
+      - 'source-parts/alpha4-text-translation-manifest.patch'
       - '.github/workflows/build.yml'
 
 jobs:
@@ -23,6 +26,9 @@ jobs:
           unzip -t source-alpha2.zip
           unzip -q source-alpha2.zip
           patch -d . -p1 < source-parts/alpha3-ocr-test.patch
+          patch -d . -p1 < source-parts/alpha4-text-translation.patch
+          patch -d . -p1 < source-parts/alpha4-text-translation-service.patch
+          patch -d . -p1 < source-parts/alpha4-text-translation-manifest.patch
           python3 - <<'PY'
           from pathlib import Path
           tv_source = Path("GlossaWhaleOS/tv/src/main/java/com/darkscorpion/glossasub/tv/TvActivity.kt")
@@ -43,17 +49,6 @@ jobs:
                   text = text.replace("android {", block, 1)
                   path.write_text(text)
           PY
-      - name: Inspect assembled source for Remote Play integration
-        shell: bash
-        run: |
-          echo "=== SOURCE TREE ==="
-          find GlossaWhaleOS -type f | sort
-          echo "=== SOURCE CONTENTS ==="
-          shopt -s globstar nullglob
-          for f in GlossaWhaleOS/**/*.kt GlossaWhaleOS/**/*.java GlossaWhaleOS/**/AndroidManifest.xml GlossaWhaleOS/**/build.gradle.kts GlossaWhaleOS/**/settings.gradle.kts; do
-            echo "===== FILE: $f ====="
-            sed -n '1,500p' "$f"
-          done
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
