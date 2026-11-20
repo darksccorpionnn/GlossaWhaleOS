@@ -1,0 +1,221 @@
+--- a/GlossaWhaleOS/tv/build.gradle.kts
++++ b/GlossaWhaleOS/tv/build.gradle.kts
+@@ -11,7 +11,12 @@
+         applicationId = "com.darkscorpion.glossasub.tv"
+         minSdk = 26
+         targetSdk = 32
+-        versionCode = 2
+-        versionName = "0.1.0-alpha2"
++        versionCode = 3
++        versionName = "0.2.0-alpha3-ocr-test"
+     }
+ }
++
++dependencies {
++    // Bundled OCR model: does not require Google Play Services on Whale OS.
++    implementation("com.google.mlkit:text-recognition:16.0.1")
++}
+--- a/GlossaWhaleOS/tv/src/main/java/com/darkscorpion/glossasub/tv/TvActivity.kt
++++ b/GlossaWhaleOS/tv/src/main/java/com/darkscorpion/glossasub/tv/TvActivity.kt
+@@ -1,7 +1,9 @@
+ package com.darkscorpion.glossasub.tv
+ 
+ import android.app.Activity
++import android.app.AlertDialog
+ import android.content.Context
++import android.graphics.Bitmap
+ import android.graphics.Color
+ import android.media.tv.TvContract
+ import android.media.tv.TvInputInfo
+@@ -12,6 +14,7 @@
+ import android.os.Handler
+ import android.os.Looper
+ import android.view.Gravity
++import android.view.PixelCopy
+ import android.view.View
+ import android.view.WindowManager
+ import android.widget.Button
+@@ -20,6 +23,10 @@
+ import android.widget.LinearLayout
+ import android.widget.TextView
+ import android.widget.Toast
++import com.google.mlkit.vision.common.InputImage
++import com.google.mlkit.vision.text.TextRecognition
++import com.google.mlkit.vision.text.TextRecognizer
++import com.google.mlkit.vision.text.latin.TextRecognizerOptions
+ import org.json.JSONObject
+ import java.net.HttpURLConnection
+ import java.net.URL
+ import java.nio.charset.StandardCharsets
+@@ -42,6 +49,8 @@
+     private var subtitleFont = 28f
+     private var subtitleBackground = 0xC9000000.toInt()
+     private var lastEventText = ""
++    private var ocrTesting = false
++    private var textRecognizer: TextRecognizer? = null
+ 
+     override fun onCreate(savedInstanceState: Bundle?) {
+         super.onCreate(savedInstanceState)
+@@ -86,6 +95,10 @@
+             leftMargin = 24
+             topMargin = 20
+         }
++        connectionBadge.isClickable = true
++        connectionBadge.isFocusable = true
++        connectionBadge.contentDescription = "HDMI görüntüsü OCR testi başlat"
++        connectionBadge.setOnClickListener { runOcrDiagnostic() }
+         root.addView(connectionBadge, badgeParams)
+ 
+         panel = LinearLayout(this).apply {
+@@ -116,6 +129,10 @@
+             text = "Telefona bağlan"
+             setOnClickListener { connectToPhone() }
+         }, fieldParams())
++        panel.addView(Button(this).apply {
++            text = "HDMI görüntüsünden yazı oku · TEST"
++            setOnClickListener { runOcrDiagnostic() }
++        }, fieldParams())
+         status = TextView(this).apply { text = "HDMI kaynağı aranıyor…"; textSize = 15f; setTextColor(0xFFFFD166.toInt()) }
+         panel.addView(status)
+         root.addView(panel, FrameLayout.LayoutParams(720, -2, Gravity.CENTER))
+@@ -164,6 +181,131 @@
+         }
+     }
+ 
++    /**
++     * Tests whether Whale OS lets this app read the HDMI picture rendered by TvView.
++     * The UI is hidden briefly so that OCR can only see the underlying HDMI frame.
++     * This is a diagnostic step; it does not yet start continuous subtitle translation.
++     */
++    private fun runOcrDiagnostic() {
++        if (ocrTesting) return
++        ocrTesting = true
++        Toast.makeText(this, "HDMI görüntüsü okunabilir mi diye test ediliyor…", Toast.LENGTH_SHORT).show()
++
++        val oldPanel = panel.visibility
++        val oldBadge = connectionBadge.visibility
++        val oldSubtitle = subtitle.visibility
++        val oldStatus = status.visibility
++        panel.visibility = View.GONE
++        connectionBadge.visibility = View.GONE
++        subtitle.visibility = View.GONE
++        status.visibility = View.GONE
++
++        main.postDelayed({
++            try {
++                val decor = window.decorView
++                val width = decor.width
++                val height = decor.height
++                if (width <= 0 || height <= 0) {
++                    restoreAfterOcrTest(oldPanel, oldBadge, oldSubtitle, oldStatus)
++                    showOcrDiagnostic("Görüntü alınamadı", "TV ekranının ölçüleri okunamadı. Uygulamayı yeniden açıp tekrar dene.")
++                    return@postDelayed
++                }
++
++                val frame = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
++                PixelCopy.request(window, frame, { copyResult ->
++                    restoreAfterOcrTest(oldPanel, oldBadge, oldSubtitle, oldStatus)
++                    if (copyResult != PixelCopy.SUCCESS) {
++                        frame.recycle()
++                        val reason = when (copyResult) {
++                            PixelCopy.ERROR_SOURCE_NO_DATA -> "HDMI yüzeyinden henüz görüntü karesi gelmedi."
++                            PixelCopy.ERROR_SOURCE_INVALID -> "TV görüntü yüzeyi bu uygulamadan okunamıyor."
++                            PixelCopy.ERROR_TIMEOUT -> "Görüntü kopyalama zaman aşımına uğradı."
++                            PixelCopy.ERROR_DESTINATION_INVALID -> "Görüntü belleği oluşturulamadı."
++                            else -> "PixelCopy hata kodu: $copyResult"
++                        }
++                        showOcrDiagnostic("HDMI karesi okunamadı", "$reason\n\nBu durumda TV'nin HDMI görüntüsünü OCR'a açmasına izin vermesi için farklı bir görüntü yakalama yöntemi gerekir.")
++                    } else {
++                        val contrast = estimateFrameContrast(frame)
++                        val recognizer = textRecognizer ?: TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS).also {
++                            textRecognizer = it
++                        }
++                        try {
++                            recognizer.process(InputImage.fromBitmap(frame, 0))
++                                .addOnSuccessListener { visionText ->
++                                    val extracted = visionText.text.trim()
++                                    frame.recycle()
++                                    when {
++                                        contrast < 3.0 -> showOcrDiagnostic(
++                                            "HDMI görüntüsü engelleniyor olabilir",
++                                            "Ekran karesi kopyalandı ancak görüntü neredeyse siyah/tek renk (kontrast: \${"%.1f".format(contrast)}). TvView içindeki HDMI videosu ekran yakalamaya kapalı olabilir.\n\nBu test henüz oyun altyazısına erişebildiğimizi göstermiyor."
++                                        )
++                                        extracted.isBlank() -> showOcrDiagnostic(
++                                            "Görüntü alındı, yazı bulunamadı",
++                                            "TV görüntüsünden bir kare okunabildi (kontrast: \${"%.1f".format(contrast)}), fakat OCR yazı bulamadı. Testi tekrarlarken oyunun İngilizce altyazısı ekranda açıkça görünsün."
++                                        )
++                                        else -> showOcrDiagnostic(
++                                            "Görüntü ve OCR çalışıyor",
++                                            "HDMI karesinden okunan metin:\n\n\${extracted.take(900)}\n\nGörüntü kontrastı: \${"%.1f".format(contrast)}\n\nBu, OCR erişiminin çalıştığını gösterir. Sürekli altyazı takibi ve Türkçe çeviri sonraki adımdır."
++                                        )
++                                    }
++                                }
++                                .addOnFailureListener { error ->
++                                    frame.recycle()
++                                    showOcrDiagnostic("OCR hatası", "Görüntü karesi alındı fakat yazı tanıma başarısız oldu: \${error.localizedMessage ?: error.javaClass.simpleName}")
++                                }
++                        } catch (error: Exception) {
++                            frame.recycle()
++                            showOcrDiagnostic("OCR başlatılamadı", error.localizedMessage ?: error.javaClass.simpleName)
++                        }
++                    }
++                }, main)
++            } catch (error: Exception) {
++                restoreAfterOcrTest(oldPanel, oldBadge, oldSubtitle, oldStatus)
++                showOcrDiagnostic("Görüntü testi başlatılamadı", error.localizedMessage ?: error.javaClass.simpleName)
++            }
++        }, 650L)
++    }
++
++    private fun restoreAfterOcrTest(panelVisibility: Int, badgeVisibility: Int, subtitleVisibility: Int, statusVisibility: Int) {
++        panel.visibility = panelVisibility
++        connectionBadge.visibility = badgeVisibility
++        subtitle.visibility = subtitleVisibility
++        status.visibility = statusVisibility
++        ocrTesting = false
++    }
++
++    private fun estimateFrameContrast(bitmap: Bitmap): Double {
++        val values = ArrayList<Double>(240)
++        val stepX = (bitmap.width / 24).coerceAtLeast(1)
++        val stepY = (bitmap.height / 10).coerceAtLeast(1)
++        var y = stepY / 2
++        while (y < bitmap.height) {
++            var x = stepX / 2
++            while (x < bitmap.width) {
++                val pixel = bitmap.getPixel(x, y)
++                val r = Color.red(pixel).toDouble()
++                val g = Color.green(pixel).toDouble()
++                val b = Color.blue(pixel).toDouble()
++                values.add(0.2126 * r + 0.7152 * g + 0.0722 * b)
++                x += stepX
++            }
++            y += stepY
++        }
++        if (values.isEmpty()) return 0.0
++        val mean = values.average()
++        val variance = values.sumOf { (it - mean) * (it - mean) } / values.size
++        return kotlin.math.sqrt(variance)
++    }
++
++    private fun showOcrDiagnostic(title: String, message: String) {
++        ocrTesting = false
++        AlertDialog.Builder(this)
++            .setTitle(title)
++            .setMessage(message)
++            .setPositiveButton("Tamam", null)
++            .show()
++    }
++
+     private fun connectToPhone() {
+         val host = ipInput.text.toString().trim()
+         val pin = pinInput.text.toString().trim()
+@@ -306,6 +448,8 @@
+         stopStream()
+         hideRunnable?.let { main.removeCallbacks(it) }
+         try { tvView.reset() } catch (_: Exception) { }
++        try { textRecognizer?.close() } catch (_: Exception) { }
++        textRecognizer = null
+         super.onDestroy()
+     }
+ }
