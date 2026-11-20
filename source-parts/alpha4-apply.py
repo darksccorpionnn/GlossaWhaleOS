@@ -177,7 +177,7 @@ replace_once(
                     writeHttp(socket, 400, "application/json", JSONObject().put("ok", false).put("error", "Invalid request length").toString())
                     socket.close(); return
                 }
-                // The TV client sends ASCII-safe JSON (non-ASCII characters escaped as \uXXXX).
+                // The TV client sends ASCII-safe JSON (non-ASCII characters are escaped).
                 // This keeps HTTP byte length equal to the number of characters read here.
                 val body = CharArray(contentLength)
                 var bodyRead = 0
