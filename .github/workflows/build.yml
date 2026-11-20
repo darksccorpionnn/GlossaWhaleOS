@@ -6,6 +6,7 @@ on:
     paths:
       - 'source-parts/alpha2-a.b64'
       - 'source-parts/alpha2-b.b64'
+      - 'source-parts/alpha3-ocr-test.patch'
       - '.github/workflows/build.yml'
 
 jobs:
@@ -21,8 +22,11 @@ jobs:
           echo "b44ff1d70cc2bd7e231d12a2d1a6495e4091e98b3c000255066112e04c735ee7  source-alpha2.zip" | sha256sum --check
           unzip -t source-alpha2.zip
           unzip -q source-alpha2.zip
+          patch -d . -p1 < source-parts/alpha3-ocr-test.patch
           python3 - <<'PY'
           from pathlib import Path
+          tv_source = Path("GlossaWhaleOS/tv/src/main/java/com/darkscorpion/glossasub/tv/TvActivity.kt")
+          tv_source.write_text(tv_source.read_text().replace(r"\${", "${"))
           for module in ("phone", "tv"):
               path = Path("GlossaWhaleOS") / module / "build.gradle.kts"
               text = path.read_text()
