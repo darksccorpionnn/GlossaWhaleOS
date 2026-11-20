@@ -58,7 +58,7 @@ replace_once(
 replace_once(
     "app/src/main/java/com/chiaking/tv/session/StreamSession.kt",
     """\t\t\t\tsurfaceTexture = surface
-\t\t\t\tthis@StreamSession.surface = Surface(surface)
+\t\t\t\tthis@StreamSession.surface = Surface(surfaceTexture)
 \t\t\t\tsession?.setSurface(Surface(surface))""",
     """\t\t\t\tsurfaceTexture = surface
 \t\t\t\tval streamSurface = Surface(surface)
