@@ -1,0 +1,36 @@
+--- a/GlossaWhaleOS/phone/src/main/java/com/darkscorpion/glossasub/phone/PhoneActivity.kt
++++ b/GlossaWhaleOS/phone/src/main/java/com/darkscorpion/glossasub/phone/PhoneActivity.kt
+@@
+         content.addView(Button(this).apply {
+             this.text = "TV'ye test altyazısı gönder"
+             setOnClickListener {
+                 if (listening) startService(Intent(this@PhoneActivity, SubtitleService::class.java).setAction(SubtitleService.ACTION_TEST))
+                 else Toast.makeText(this@PhoneActivity, "Önce dinlemeyi başlat.", Toast.LENGTH_SHORT).show()
+             }
+         }, matchWidth())
++        content.addView(Button(this).apply {
++            this.text = "Görüntü yazısı çeviri sunucusunu başlat"
++            setOnClickListener { startTextTranslationServer() }
++        }, matchWidth())
+         content.addView(text("Not: İlk sürüm telefonun mikrofonunu kullanır. Telefonu TV hoparlörünü duyabileceği bir yere koy. HDMI sesini doğrudan telefona aktardığını varsaymıyoruz.", 14f))
+@@
+     private fun matchWidth() = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+         bottomMargin = 8
+     }
+ 
++    private fun startTextTranslationServer() {
++        val key = apiKey.text.toString().trim()
++        if (key.isBlank()) {
++            Toast.makeText(this, "Önce Gemini API anahtarını gir.", Toast.LENGTH_LONG).show()
++            return
++        }
++        val intent = Intent(this, SubtitleService::class.java)
++            .setAction(SubtitleService.ACTION_START_TEXT_TRANSLATION)
++            .putExtra("apiKey", key)
++        if (Build.VERSION.SDK_INT >= 26) startForegroundService(intent) else startService(intent)
++        listening = true
++        statusView.text = "Durum: Görüntü yazısı çeviri sunucusu başlatılıyor… Mikrofon kullanılmayacak."
++    }
++
+     private fun startListening() {
+*** End Patch
