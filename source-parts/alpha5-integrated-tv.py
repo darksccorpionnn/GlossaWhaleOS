@@ -14,6 +14,13 @@ def replace_once(path: str, old: str, new: str) -> None:
         raise SystemExit(f"{path}: expected one matching block, found {count}")
     file.write_text(text.replace(old, new, 1), encoding="utf-8")
 
+# Keep the native curl CA path aligned with the new applicationId.
+replace_once(
+    "native/CMakeLists.txt",
+    'set(CURL_CA_BUNDLE "/data/data/com.chiaking.tv/files/ca-bundle.pem" CACHE STRING "Default CA bundle" FORCE)',
+    'set(CURL_CA_BUNDLE "/data/data/com.darkscorpion.glossawhale.tv/files/ca-bundle.pem" CACHE STRING "Default CA bundle" FORCE)'
+)
+
 # Give the integrated app its own package so it can coexist with the earlier GlossaSub TV APK.
 replace_once(
     "app/build.gradle",
