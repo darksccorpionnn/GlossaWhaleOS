@@ -108,6 +108,30 @@ replace_once(
     """\t\tGlossaWhaleLayer(session = session)"""
 )
 
+replace_once(
+    "app/src/main/java/com/chiaking/tv/ui/screens/stream/StreamScreen.kt",
+    r"""\t\t\tis StreamStateQuit -> {
+\t\t\t\tval quit = state as StreamStateQuit
+\t\t\t\tif(session.disconnecting)
+\t\t\t\t\t{}
+\t\t\t\telse if(quit.reason.isError)
+\t\t\t\t\tquitDialog = quit
+\t\t\t\telse
+\t\t\t\t\tonQuit()
+\t\t\t}""",
+    r"""\t\t\tis StreamStateQuit -> {
+\t\t\t\tval quit = state as StreamStateQuit
+\t\t\t\tif(session.disconnecting)
+\t\t\t\t\t{}
+\t\t\t\telse
+\t\t\t\t{
+\t\t\t\t\t// Show native disconnect details for non-error quits instead of silently
+\t\t\t\t\t// returning to the home screen on Android TV.
+\t\t\t\t\tquitDialog = quit
+\t\t\t\t}
+\t\t\t}"""
+)
+
 helper = r'''// SPDX-License-Identifier: LicenseRef-AGPL-3.0-only-OpenSSL
 
 package com.chiaking.tv.ui.screens.stream
