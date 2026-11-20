@@ -1,0 +1,3 @@
+[submodule "remote/chiaki-ng-androidtv"]
+	path = remote/chiaki-ng-androidtv
+	url = https://github.com/worstenbrood/chiaki-ng-androidtv.git
