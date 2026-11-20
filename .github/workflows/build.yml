@@ -84,6 +84,9 @@ jobs:
           gradle-version: '8.11.1'
           arguments: -p GlossaWhaleOS --no-daemon :phone:assembleDebug :tv:assembleDebug
 
+      - name: Install host Protobuf compiler
+        run: sudo apt-get update && sudo apt-get install -y protobuf-compiler
+
       - name: Build Chiaki Remote Play OCR TV APK
         uses: gradle/gradle-build-action@v3
         with:
