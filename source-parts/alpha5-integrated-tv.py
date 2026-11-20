@@ -3,6 +3,10 @@ from pathlib import Path
 REMOTE = Path("remote/chiaki-ng-androidtv")
 
 def replace_once(path: str, old: str, new: str) -> None:
+    # The patch strings are stored with visible \t escapes; normalize them to
+    # real tabs before matching the upstream Kotlin sources.
+    old = old.replace(r"\t", "\t")
+    new = new.replace(r"\t", "\t")
     file = REMOTE / path
     text = file.read_text(encoding="utf-8")
     count = text.count(old)
