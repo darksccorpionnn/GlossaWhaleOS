@@ -1,0 +1,8 @@
+--- a/GlossaWhaleOS/phone/src/main/AndroidManifest.xml
++++ b/GlossaWhaleOS/phone/src/main/AndroidManifest.xml
+@@
+     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
++    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+@@
+-            android:foregroundServiceType="microphone" />
++            android:foregroundServiceType="microphone|dataSync" />
