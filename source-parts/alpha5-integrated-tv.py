@@ -488,4 +488,62 @@ phone_text = phone_manifest.read_text(encoding="utf-8")
 if 'android:label="GlossaSub Telefon"' in phone_text:
     phone_manifest.write_text(phone_text.replace('android:label="GlossaSub Telefon"', 'android:label="GlossaWhaleOS Telefon"', 1), encoding="utf-8")
 
+
+# Persist fatal Java/Kotlin crashes so a TV that silently returns to its launcher
+# can show the actual stack trace the next time the user opens GlossaWhaleOS.
+replace_once(
+    "app/src/main/java/com/chiaking/tv/MainActivity.kt",
+    """        super.onCreate(savedInstanceState)
+        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)""",
+    """        super.onCreate(savedInstanceState)
+        val crashFile = java.io.File(filesDir, "glossa-last-crash.txt")
+        val previousHandler = Thread.getDefaultUncaughtExceptionHandler()
+        Thread.setDefaultUncaughtExceptionHandler { thread, error ->
+            try {
+                crashFile.writeText(
+                    "GlossaWhaleOS fatal crash\\nThread: " + thread.name +
+                    "\\nDevice: " + android.os.Build.MANUFACTURER + " " + android.os.Build.MODEL +
+                    "\\nAndroid: " + android.os.Build.VERSION.RELEASE +
+                    "\\nTime: " + java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.US).format(java.util.Date()) +
+                    "\\n\\n" + android.util.Log.getStackTraceString(error)
+                )
+            } catch (_: Exception) {}
+            previousHandler?.uncaughtException(thread, error)
+        }
+        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)"""
+)
+replace_once(
+    "app/src/main/java/com/chiaking/tv/MainActivity.kt",
+    """                        Navigation()
+                        ImportSettingsDialog(settingsTransfer)""",
+    """                        Navigation()
+                        ImportSettingsDialog(settingsTransfer)
+                        val crashFile = java.io.File(filesDir, "glossa-last-crash.txt")
+                        var previousCrash by androidx.compose.runtime.remember {
+                            androidx.compose.runtime.mutableStateOf(
+                                try { crashFile.takeIf { it.exists() }?.readText() } catch (_: Exception) { null }
+                            )
+                        }
+                        if (!previousCrash.isNullOrBlank()) {
+                            androidx.compose.material3.AlertDialog(
+                                onDismissRequest = { },
+                                title = { androidx.compose.material3.Text("Önceki oturumda uygulama çöktü") },
+                                text = {
+                                    androidx.compose.foundation.layout.Column {
+                                        androidx.compose.material3.Text(
+                                            previousCrash!!.takeLast(3500),
+                                            maxLines = 18
+                                        )
+                                    }
+                                },
+                                confirmButton = {
+                                    androidx.compose.material3.TextButton(onClick = {
+                                        try { crashFile.delete() } catch (_: Exception) {}
+                                        previousCrash = null
+                                    }) { androidx.compose.material3.Text("Kaydı kapat") }
+                                }
+                            )
+                        }"""
+)
+
 print("Integrated Chiaki HDMI/OCR layer applied.")
