@@ -30,7 +30,7 @@ replace_once(
 replace_once(
     "app/build.gradle",
     'versionCode 38\n\t\tversionName "1.28.1-tv"',
-    'versionCode 39\n\t\tversionName "1.28.1-glossawhale-alpha1"'
+    'versionCode 40\n\t\tversionName "1.28.1-glossawhale-alpha2"'
 )
 replace_once(
     "app/build.gradle",
@@ -548,3 +548,144 @@ replace_once(
 )
 
 print("Integrated Chiaki HDMI/OCR layer applied.")
+
+
+# Alpha 6: prefer a discovered local PS4 path over PSN holepunch.
+# This removes the internet/PSN relay from same-LAN sessions when the console
+# has already been registered and its local address is visible.
+replace_once(
+    "app/src/main/java/com/chiaking/tv/connect/RemoteConnectController.kt",
+    """import com.chiaking.tv.common.MacAddress""",
+    """import com.chiaking.tv.common.MacAddress
+import com.chiaking.tv.common.DiscoveredDisplayHost
+import com.chiaking.tv.common.LastSeenHosts
+import com.metallic.chiaki.lib.DiscoveryHost"""
+)
+replace_once(
+    "app/src/main/java/com/chiaking/tv/connect/RemoteConnectController.kt",
+    """\t\t\t\tconnectingText = context.getString(R.string.remote_refreshing_token)""",
+    """\t\t\t\t// If this PSN console is also visible on the local network, use its
+\t\t\t\t// saved registration keys with the LAN address instead of creating a
+\t\t\t\t// PSN holepunch session. The local path avoids internet relay churn.
+\t\t\t\tval mappedMac = preferences.remoteHostMacs.firstOrNull {
+\t\t\t\t\tit.startsWith(device.duid + "|")
+\t\t\t\t}?.substringAfter('|')
+\t\t\t\tif(mappedMac != null)
+\t\t\t\t{
+\t\t\t\t\tval localTarget = withContext(Dispatchers.IO) {
+\t\t\t\t\t\tval mac = try { MacAddress(mappedMac) } catch (_: Exception) { null }
+\t\t\t\t\t\tif(mac == null) null else {
+\t\t\t\t\t\t\tval registered = database.registeredHostDao().getByMac(mac)
+\t\t\t\t\t\t\tval discovered = LastSeenHosts.hosts.value[mac]
+\t\t\t\t\t\t\tif(registered != null && registered.psnAccountId == accountId &&
+\t\t\t\t\t\t\t\tdiscovered != null && discovered.state == DiscoveryHost.State.READY &&
+\t\t\t\t\t\t\t\t!discovered.hostAddr.isNullOrBlank())
+\t\t\t\t\t\t\t\tregistered to discovered
+\t\t\t\t\t\t\telse null
+\t\t\t\t\t\t}
+\t\t\t\t\t}
+\t\t\t\t\tif(localTarget != null)
+\t\t\t\t\t{
+\t\t\t\t\t\ttry
+\t\t\t\t\t\t{
+\t\t\t\t\t\t\tval localSession = StreamManager.start(context, preferences, logManager,
+\t\t\t\t\t\t\t\tDiscoveredDisplayHost(localTarget.first, localTarget.second))
+\t\t\t\t\t\t\tif(localSession != null)
+\t\t\t\t\t\t\t{
+\t\t\t\t\t\t\t\tLog.i(TAG, "PSN console is visible on LAN; using direct local connection")
+\t\t\t\t\t\t\t\tconnectingText = null
+\t\t\t\t\t\t\t\tonStreamReady(localSession)
+\t\t\t\t\t\t\t\treturn@launch
+\t\t\t\t\t\t\t}
+\t\t\t\t\t\t}
+\t\t\t\t\t\tcatch(localError: Exception)
+\t\t\t\t\t\t{
+\t\t\t\t\t\t\tLog.w(TAG, "Local connection attempt failed; falling back to PSN", localError)
+\t\t\t\t\t\t}
+\t\t\t\t\t}
+\t\t\t\t}
+\t\t\t\tconnectingText = context.getString(R.string.remote_refreshing_token)"""
+)
+
+# Always enable Chiaki's verbose session log, and persist the exact host quit reason.
+replace_once(
+    "app/src/main/java/com/chiaking/tv/MainActivity.kt",
+    """        preferences = Preferences(applicationContext)""",
+    """        preferences = Preferences(applicationContext)
+        preferences.logVerbose = true
+        collectPreviousExitDiagnostic()"""
+)
+replace_once(
+    "app/src/main/java/com/chiaking/tv/MainActivity.kt",
+    """    private var coopPickerController: CoopAccountPickerController? = null""",
+    """    private var coopPickerController: CoopAccountPickerController? = null
+    private var previousExitDiagnostic: String? = null"""
+)
+replace_once(
+    "app/src/main/java/com/chiaking/tv/MainActivity.kt",
+    """    override fun onResume()
+    {""",
+    """    private fun collectPreviousExitDiagnostic()
+    {
+        if(android.os.Build.VERSION.SDK_INT < 30)
+            return
+        try
+        {
+            val store = getSharedPreferences("glossa_exit_diagnostics", MODE_PRIVATE)
+            val lastSeen = store.getLong("last_seen_exit_timestamp", 0L)
+            val manager = getSystemService(android.content.Context.ACTIVITY_SERVICE) as android.app.ActivityManager
+            val info = manager.getHistoricalProcessExitReasons(packageName, 0, 10)
+                .firstOrNull { it.timestamp > lastSeen }
+            if(info != null)
+            {
+                previousExitDiagnostic =
+                    "Android process exit report" +
+                    "\\nReason code: " + info.reason +
+                    "\\nDescription: " + (info.description?.toString() ?: "(none)") +
+                    "\\nStatus: " + info.status +
+                    "\\nImportance: " + info.importance +
+                    "\\nProcess: " + info.processName +
+                    "\\nTime: " + java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.US)
+                        .format(java.util.Date(info.timestamp)) +
+                    "\\n\\nVerbose Chiaki session logs are enabled. Open Settings → Logs."
+                store.edit().putLong("last_seen_exit_timestamp", info.timestamp).apply()
+            }
+        }
+        catch(error: Exception)
+        {
+            android.util.Log.e("GlossaWhaleOS", "Could not read previous process exit report", error)
+        }
+    }
+
+    override fun onResume()
+    {"""
+)
+replace_once(
+    "app/src/main/java/com/chiaking/tv/MainActivity.kt",
+    """                        val previousCrashText = previousCrashState.value.orEmpty()""",
+    """                        val previousCrashText = previousCrashState.value.orEmpty().let { crash ->
+                            val exit = previousExitDiagnostic
+                            if (exit.isNullOrBlank()) crash
+                            else if (crash.isBlank()) exit
+                            else crash + "\\n\\n" + exit
+                        }"""
+)
+replace_once(
+    "app/src/main/java/com/chiaking/tv/session/StreamSession.kt",
+    """\t\t\tis QuitEvent ->
+\t\t\t{
+\t\t\t\tval elapsed = SystemClock.elapsedRealtime() - startTime""",
+    """\t\t\tis QuitEvent ->
+\t\t\t{
+\t\t\t\tval quitReport = "Time: " +
+\t\t\t\t\tjava.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.US).format(java.util.Date()) +
+\t\t\t\t\t"\\nReason: " + event.reason.toString() +
+\t\t\t\t\t"\\nReason detail: " + (event.reasonString ?: "(none)") +
+\t\t\t\t\t"\\nConnected before quit: " + connected + "\\n"
+\t\t\t\ttry {
+\t\t\t\t\tjava.io.File(logManager.baseDir.parentFile, "glossa-last-session-quit.txt").appendText(quitReport)
+\t\t\t\t} catch (_: Exception) {}
+\t\t\t\tandroid.util.Log.e("GlossaWhaleOS", quitReport)
+\t\t\t\tval elapsed = SystemClock.elapsedRealtime() - startTime"""
+)
+print("Alpha 6 local-first and diagnostic patches appended.")
