@@ -121,25 +121,20 @@ public final class PsnAccountActivity extends Activity {
             "Buradaki 8 haneli kod, PSN Account ID'den farklıdır ve gerçek "+
             "Chiaki bağlantı motorunun kayıt ekranında kullanılacaktır.");
         GlossaUI.add(note,GlossaUI.text(this,
-            "Bu sürüm PSN Account ID hazırlama ekranıdır; henüz PS4'e "+
-            "bağlandığını veya PIN kaydı yaptığını iddia etmez. "+
+            "PSN Account ID hazır olunca konsollar ekranından PS4'ü seç. "+
+            "PS4 cihaz ekleme koduyla güvenli eşleştirme yapılacak. "+
             "PSN giriş sorunu olursa elle alınmış Account ID kullanılabilir.",
             13,GlossaUI.MUTED,false));
         GlossaUI.add(root,note);
         GlossaUI.gap(root,this,18);
-        TextView next=GlossaUI.button(this,"Devam et → PS4'e eşleştir",true);
+        TextView next=GlossaUI.button(this,"Devam et → PS4 konsolunu seç",true);
         next.setOnClickListener(v -> {
             String id=getSharedPreferences(PREF,MODE_PRIVATE).getString("account_id","");
             if(id.isEmpty()){
                 feedback.setText("Önce ikinci PSN hesabının Account ID'sini al veya gir.");
                 return;
             }
-            android.content.Intent intent=new android.content.Intent(this,com.metallic.chiaki.regist.RegistActivity.class);
-            intent.putExtra("glossa_psn_account_id",id);
-            intent.putExtra("regist_host",getSharedPreferences("glossa_live_v3",MODE_PRIVATE)
-                .getString("ps4_host",""));
-            intent.putExtra("regist_broadcast",false);
-            startActivity(intent);
+            startActivity(new android.content.Intent(this,GlossaConsolesActivity.class));
         });
         GlossaUI.add(root,next);
         setContentView(scroll);
