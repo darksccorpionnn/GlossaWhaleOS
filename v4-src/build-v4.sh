@@ -22,9 +22,9 @@ gradle=gradle.replace(before,'applicationId "com.darkscorpion.glossawhale.unifie
 # The verified 3.1 build had versionCode 12. V4 starts a numbered release
 # line so upgrades can eventually preserve registration with stable signing.
 assert gradle.count('versionCode 12')==1
-gradle=gradle.replace('versionCode 12','versionCode 40')
+gradle=gradle.replace('versionCode 12','versionCode 41')
 assert gradle.count('versionName chiakiVersion')==1
-gradle=gradle.replace('versionName chiakiVersion','versionName "4.0.0-beta1"')
+gradle=gradle.replace('versionName chiakiVersion','versionName "4.0.1-beta2"')
 deps='dependencies {'
 assert gradle.count(deps)==1
 gradle=gradle.replace(deps,deps+"\n    implementation 'com.google.mlkit:text-recognition:16.0.1'\n    implementation 'com.google.mlkit:translate:17.0.3'",1)
@@ -89,6 +89,8 @@ xml=xml.replace('    </application>', '''        <activity android:name="com.met
         </activity>
         <activity android:name="com.metallic.chiaki.glossa.GlossaThemeActivity"
             android:exported="false" />
+        <activity android:name="com.metallic.chiaki.glossa.PsnAccountActivity"
+            android:exported="false" />
     </application>''',1)
 manifest.write_text(xml)
 
@@ -125,6 +127,22 @@ assert text.count(needle)==1
 text=text.replace(needle,
     '\t\tR.id.action_glossa ->\n\t\t{\n\t\t\tstartActivity(Intent(this, com.metallic.chiaki.glossa.GlossaSettingsActivity::class.java))\n\t\t\ttrue\n\t\t}\n\n'+needle)
 main.write_text(text)
+
+# Auto-fill PSN Account ID when entering the existing Chiaki registration
+# form from the Glossa account wizard, and select the correct PS4 >=8 profile.
+reg=Path('android/app/src/main/java/com/metallic/chiaki/regist/RegistActivity.kt')
+regtext=reg.read_text()
+needle='\t\tbinding.registButton.setOnClickListener { doRegist() }'
+assert regtext.count(needle)==1
+regtext=regtext.replace(needle,needle+'''
+        val preparedPsnId = intent.getStringExtra("glossa_psn_account_id")
+            ?: getSharedPreferences("glossa_psn", MODE_PRIVATE).getString("account_id", "")
+        if(!preparedPsnId.isNullOrBlank()) {
+            binding.psnIdEditText.setText(preparedPsnId)
+            viewModel.ps4Version.value = RegistViewModel.ConsoleVersion.PS4_GE_8
+        }
+''')
+reg.write_text(regtext)
 
 stream=Path('android/app/src/main/java/com/metallic/chiaki/stream/StreamActivity.kt')
 text=stream.read_text()
@@ -242,7 +260,7 @@ chmod +x gradlew
 ./gradlew --no-daemon --stacktrace --max-workers=2 :app:assembleDebug
 mkdir -p "${GITHUB_WORKSPACE}/dist-remote"
 cp app/build/outputs/apk/debug/app-debug.apk \
-  "${GITHUB_WORKSPACE}/dist-remote/GlossaWhaleOS-4.0-Tek-Telefon-Uygulamasi.apk"
+  "${GITHUB_WORKSPACE}/dist-remote/GlossaWhaleOS-4.0.1-PSN-Hesap-Ekleme-Telefon.apk"
 
 cat > "${GITHUB_WORKSPACE}/dist-remote/SOURCE_AND_LICENSE.txt" <<'TXT'
 GlossaWhaleOS 4.0 Integrated Phone App: Chiaki Remote Play + OCR + translation
