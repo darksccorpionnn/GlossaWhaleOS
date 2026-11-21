@@ -121,6 +121,15 @@ public final class PhoneActivity extends Activity {
         TextView psnStart=GlossaUI.button(this,"PSN hesabını ve eşleştirmeyi hazırla",false);
         psnStart.setOnClickListener(v -> startActivity(new Intent(this,PsnAccountActivity.class)));
         GlossaUI.add(psn,psnStart);
+        GlossaUI.gap(psn,this,12);
+        TextView remoteEngine=GlossaUI.button(this,"PS4 bağlantı motorunu aç (Chiaki)",false);
+        remoteEngine.setOnClickListener(v -> openChiakiEngine());
+        GlossaUI.add(psn,remoteEngine);
+        GlossaUI.gap(psn,this,10);
+        GlossaUI.add(psn,GlossaUI.text(this,
+            "Bu düğme yalnızca Glossa PS4 bağlantı motoru APK'sı kuruluysa çalışır. "+
+            "PS4 kayıt işlemi Chiaki motorunun içindeki 8 haneli kayıt ekranında yapılır.",
+            13,GlossaUI.MUTED,false));
         page.addView(psn,GlossaUI.spaced(this,16));
 
         LinearLayout pairing=GlossaUI.card(this,"02  ·  TV otomatik bağlantısı",
@@ -288,6 +297,21 @@ public final class PhoneActivity extends Activity {
             if(Build.VERSION.SDK_INT>=26) startForegroundService(intent);
             else startService(intent);
             status.setText("OCR başlatılıyor… PS4 video akışı henüz entegre değil.");
+        }
+    }
+
+    private void openChiakiEngine() {
+        try {
+            Intent app=getPackageManager().getLaunchIntentForPackage(
+                "com.darkscorpion.glossawhale.ps4remote");
+            if(app==null) {
+                status.setText("PS4 bağlantı motoru kurulu değil. "+
+                    "Chiaki tabanlı APK ayrıca yüklendikten sonra buradan açılacak.");
+                return;
+            }
+            startActivity(app);
+        } catch(Exception e) {
+            status.setText("PS4 bağlantı motoru açılamadı: "+e.getClass().getSimpleName());
         }
     }
 
