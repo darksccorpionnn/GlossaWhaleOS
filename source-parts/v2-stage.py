@@ -34,7 +34,7 @@ for module in ("phone", "tv"):
     # Keep the existing Gradle plugin resolution proven in the previous builds.
     gradle_path = app / "build.gradle.kts"
     gradle = gradle_path.read_text()
-    new_id = (f"com.darkscorpion.glossawhale.{module}.v211"
+    new_id = (f"com.darkscorpion.glossawhale.{module}.v22"
               if module == "phone"
               else f"com.darkscorpion.glossawhale.{module}.v21")
     gradle, n_id = re.subn(
@@ -44,9 +44,9 @@ for module in ("phone", "tv"):
     if n_id != 1:
         raise SystemExit(f"{module}: expected one applicationId")
     gradle, n_version = re.subn(r'versionCode\s*=\s*\d+',
-        'versionCode = 211', gradle, count=1)
+        'versionCode = 220', gradle, count=1)
     gradle, n_name = re.subn(r'versionName\s*=\s*"[^"]+"',
-        'versionName = "2.1.1-discovery-fix"', gradle, count=1)
+        'versionName = "2.2.0-psn-account-prep"', gradle, count=1)
     if n_version != 1 or n_name != 1:
         raise SystemExit(f"{module}: Gradle version values not found")
     gradle, n_target = re.subn(r'targetSdk\s*=\s*\d+',
@@ -84,11 +84,13 @@ phone_manifest = r'''<?xml version="1.0" encoding="utf-8"?>
         <package android:name="com.playstation.remoteplay" />
     </queries>
     <application
-        android:label="GlossaWhaleOS 2.1.1 Telefon"
+        android:label="GlossaWhaleOS 2.2 Telefon"
         android:theme="@android:style/Theme.Material.NoActionBar"
         android:usesCleartextTraffic="true"
         android:allowBackup="false"
         android:supportsRtl="true">
+        <activity android:name="com.darkscorpion.glossasub.phone.PsnAccountActivity"
+            android:exported="false" />
         <activity
             android:name="com.darkscorpion.glossasub.phone.PhoneActivity"
             android:exported="true">

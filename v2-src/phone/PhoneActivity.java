@@ -115,6 +115,14 @@ public final class PhoneActivity extends Activity {
             13,GlossaUI.MUTED,false));
         page.addView(ps4,GlossaUI.spaced(this,16));
 
+        LinearLayout psn=GlossaUI.card(this,"PS4 Remote Play  ·  ikinci PSN hesabı",
+            "Sony'nin giriş sayfasını açıp ikinci PSN hesabının Account ID "+
+            "bilgisini güvenle hazırlayabilirsin. PS4 eşleştirmesi için Chiaki motoru da gerekir.");
+        TextView psnStart=GlossaUI.button(this,"PSN hesabını ve eşleştirmeyi hazırla",false);
+        psnStart.setOnClickListener(v -> startActivity(new Intent(this,PsnAccountActivity.class)));
+        GlossaUI.add(psn,psnStart);
+        page.addView(psn,GlossaUI.spaced(this,16));
+
         LinearLayout pairing=GlossaUI.card(this,"02  ·  TV otomatik bağlantısı",
             "TV alıcısı açıksa IP adresi otomatik doldurulur. Güvenlik için TV'deki 6 haneli kod ilk kez girilir; ardından cihazda saklanır.");
         tvStatus=GlossaUI.text(this,"TV henüz aranmadı.",14,GlossaUI.TEAL,false);

@@ -1,4 +1,4 @@
-name: GlossaWhaleOS 2.1.1 - PS4 discovery reliability
+name: GlossaWhaleOS 2.2 - PSN account preparation
 
 on:
   push:
@@ -50,16 +50,16 @@ jobs:
         run: |
           set -e
           mkdir -p dist
-          cp GlossaWhaleOS/phone/build/outputs/apk/debug/phone-debug.apk dist/GlossaWhaleOS-2.1.1-Telefon-PS4-tarama-duzeltme.apk
-          cp GlossaWhaleOS/tv/build/outputs/apk/debug/tv-debug.apk dist/GlossaWhaleOS-2.1.1-TV.apk
+          cp GlossaWhaleOS/phone/build/outputs/apk/debug/phone-debug.apk dist/GlossaWhaleOS-2.2-Telefon-PSN-hazirlik.apk
+          cp GlossaWhaleOS/tv/build/outputs/apk/debug/tv-debug.apk dist/GlossaWhaleOS-2.2-TV-uyumlu.apk
           aapt="$ANDROID_HOME/build-tools/35.0.0/aapt"
-          "$aapt" dump badging dist/GlossaWhaleOS-2.1.1-Telefon-PS4-tarama-duzeltme.apk | grep "name='com.darkscorpion.glossawhale.phone.v211'"
-          "$aapt" dump badging dist/GlossaWhaleOS-2.1.1-TV.apk | grep "name='com.darkscorpion.glossawhale.tv.v21'"
+          "$aapt" dump badging dist/GlossaWhaleOS-2.2-Telefon-PSN-hazirlik.apk | grep "name='com.darkscorpion.glossawhale.phone.v22'"
+          "$aapt" dump badging dist/GlossaWhaleOS-2.2-TV-uyumlu.apk | grep "name='com.darkscorpion.glossawhale.tv.v21'"
           sha256sum dist/*.apk
 
       - name: Upload phone and TV APKs
         uses: actions/upload-artifact@v4
         with:
-          name: GlossaWhaleOS-2.1.1-PS4-discovery-fix
+          name: GlossaWhaleOS-2.2-psn-preparation
           path: dist/*.apk
           if-no-files-found: error
