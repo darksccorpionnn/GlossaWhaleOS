@@ -7,7 +7,7 @@ on:
     paths:
       - 'source-parts/build-chiaki-v31.sh'
       - 'v3-src/integrated/**'
-      - '.github/workflows/ps4-engine-build.yml'
+      - '.github/workflows/ps4-v31-build.yml'
   workflow_dispatch:
 
 jobs:
