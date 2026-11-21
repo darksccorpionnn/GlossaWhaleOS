@@ -52,13 +52,15 @@ for module in ("phone", "tv"):
     if n_target != 1:
         raise SystemExit(f"{module}: targetSdk not found")
     if module == "phone":
-        if "com.google.mlkit:text-recognition:16.0.1" not in gradle:
-            gradle = gradle.replace(
-                "dependencies {",
-                'dependencies {\n    implementation("com.google.mlkit:text-recognition:16.0.1")\n'
-                '    implementation("com.google.mlkit:translate:17.0.3")',
-                1
-            )
+        for dependency in (
+            "com.google.mlkit:text-recognition:16.0.1",
+            "com.google.mlkit:translate:17.0.3",
+        ):
+            if dependency not in gradle:
+                gradle = gradle.replace(
+                    "dependencies {",
+                    'dependencies {\n    implementation("' + dependency + '")', 1
+                )
         if "com.google.mlkit:translate:17.0.3" not in gradle:
             raise SystemExit("Missing offline translation dependency")
     gradle_path.write_text(gradle, encoding="utf-8")
