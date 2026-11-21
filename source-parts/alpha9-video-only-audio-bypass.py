@@ -64,8 +64,9 @@ if jni.count("audio_sink.frame_cb = glossa_discard_audio_frame;") != 1:
 if jni.count("chiaki_session_set_audio_sink(&session->session, &audio_sink);") != 1:
     raise SystemExit("Unexpected multiple Chiaki audio sink registrations")
 
-# Alpha 8 already changed Alpha 7's version to 49. Ensure Alpha 9 can be
-# installed over the user's existing Alpha 8 app without clearing accounts.
+# Alpha 8 already changed Alpha 7's version to 49. Increment the version
+# for Alpha 9; Android also requires the *same signing certificate* for an
+# in-place update, which hosted debug builds may not preserve.
 app_gradle = REMOTE / "app/build.gradle"
 gradle_source = app_gradle.read_text(encoding="utf-8")
 old_version = 'versionCode 49\n\t\tversionName "1.28.1-glossawhale-alpha8"'
