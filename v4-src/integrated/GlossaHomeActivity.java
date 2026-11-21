@@ -26,7 +26,7 @@ import java.util.concurrent.Executors;
 public final class GlossaHomeActivity extends Activity {
     private GlossaTheme theme;
     private LinearLayout root;
-    private TextView tvState,lastState;
+    private TextView tvState,lastState,accountState;
     private ExecutorService worker=Executors.newSingleThreadExecutor();
     private int dp(int x){return GlossaTheme.dp(this,x);}
     private void gap(LinearLayout p,int n){p.addView(new View(this),new LinearLayout.LayoutParams(1,dp(n)));}
@@ -68,10 +68,10 @@ public final class GlossaHomeActivity extends Activity {
         TextView engine=theme.text(this,"● PS4 motoru hazır  ·  Chiaki dahili",15,true,theme.accent);
         add(statusCard,engine,11);
         String savedPsn=getSharedPreferences("glossa_psn",MODE_PRIVATE).getString("account_id","");
-        TextView account=theme.text(this,savedPsn.isEmpty()?
+        accountState=theme.text(this,savedPsn.isEmpty()?
             "○ PSN Account ID eklenmedi":"● PSN Account ID kayıtlı",14,true,
             savedPsn.isEmpty()?theme.muted:theme.accent);
-        add(statusCard,account,11);
+        add(statusCard,accountState,11);
         SharedPreferences p=getSharedPreferences(GlossaTheme.PREF,MODE_PRIVATE);
         String ip=p.getString("tv_ip","");
         tvState=theme.text(this,ip.isEmpty()?
@@ -133,6 +133,12 @@ public final class GlossaHomeActivity extends Activity {
             else {
                 SharedPreferences p=getSharedPreferences(GlossaTheme.PREF,MODE_PRIVATE);
                 if(lastState!=null) lastState.setText(p.getString("last_state","Çeviri beklemede"));
+                if(accountState!=null){
+                    boolean saved=!getSharedPreferences("glossa_psn",MODE_PRIVATE)
+                        .getString("account_id","").isEmpty();
+                    accountState.setText(saved?"● PSN Account ID kayıtlı":"○ PSN Account ID eklenmedi");
+                    accountState.setTextColor(saved?theme.accent:theme.muted);
+                }
                 refreshTv();
             }
         }
