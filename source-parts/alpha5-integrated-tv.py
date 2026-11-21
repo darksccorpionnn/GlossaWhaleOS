@@ -30,7 +30,7 @@ replace_once(
 replace_once(
     "app/build.gradle",
     'versionCode 38\n\t\tversionName "1.28.1-tv"',
-    'versionCode 45\n\t\tversionName "1.28.1-glossawhale-alpha6"'
+    'versionCode 46\n\t\tversionName "1.28.1-glossawhale-alpha6"'
 )
 replace_once(
     "app/build.gradle",
@@ -838,7 +838,7 @@ replace_once(
         try
         {
             val store = getSharedPreferences("glossa_exit_diagnostics", MODE_PRIVATE)
-            val lastSeen = store.getLong("last_seen_exit_timestamp_alpha5", 0L)
+            val lastSeen = store.getLong("last_seen_exit_timestamp_alpha6", 0L)
             val manager = getSystemService(android.content.Context.ACTIVITY_SERVICE) as android.app.ActivityManager
             val info = manager.getHistoricalProcessExitReasons(packageName, 0, 10)
                 .firstOrNull { it.timestamp > lastSeen }
@@ -917,7 +917,7 @@ replace_once(
                 } catch(logError: Exception) {
                     android.util.Log.e("GlossaWhaleOS", "Could not save native crash report", logError)
                 }
-                store.edit().putLong("last_seen_exit_timestamp_alpha5", info.timestamp).apply()
+                store.edit().putLong("last_seen_exit_timestamp_alpha6", info.timestamp).apply()
             }
         }
         catch(error: Exception)
