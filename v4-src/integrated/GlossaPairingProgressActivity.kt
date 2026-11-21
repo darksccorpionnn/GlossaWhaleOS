@@ -34,7 +34,7 @@ class GlossaPairingProgressActivity : AppCompatActivity() {
     private lateinit var done:TextView
     private var duplicateDialog:AlertDialog?=null
 
-    private fun dp(n:Int)=GlossaTheme.dp(this,n)
+    private fun dp(n:Int)=GlossaTheme.dp(this,n.toFloat())
     private fun add(p:LinearLayout,v:View,bottom:Int=0){
         val lp=LinearLayout.LayoutParams(-1,-2)
         lp.bottomMargin=dp(bottom)
@@ -67,7 +67,7 @@ class GlossaPairingProgressActivity : AppCompatActivity() {
         logs.movementMethod=ScrollingMovementMethod()
         logs.setTextIsSelectable(true)
         logs.setPadding(dp(10),dp(10),dp(10),dp(10))
-        logs.background=GlossaTheme.shape(this,0xFF0C1525,10)
+        logs.background=GlossaTheme.shape(this,0xFF0C1525.toInt(),10)
         val logScroll=ScrollView(this).apply { addView(logs) }
         card.addView(logScroll,LinearLayout.LayoutParams(-1,dp(220)))
         add(main,card,18)
