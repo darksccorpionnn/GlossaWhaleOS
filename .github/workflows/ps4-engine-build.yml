@@ -37,7 +37,7 @@ jobs:
           set -e
           aapt="$ANDROID_HOME/build-tools/35.0.0/aapt"
           "$aapt" dump badging dist-remote/GlossaWhaleOS-3.0-Tek-Uygulama-PS4-Ceviri.apk |
-            grep "name='com.darkscorpion.glossawhale.ps4remote'"
+            grep "name='com.darkscorpion.glossawhale.unifiedv3'"
           unzip -l dist-remote/GlossaWhaleOS-3.0-Tek-Uygulama-PS4-Ceviri.apk | grep '\.so$' | head
           unzip -l dist-remote/*.apk | grep 'classes.dex' | head -1
           sha256sum dist-remote/*.apk
