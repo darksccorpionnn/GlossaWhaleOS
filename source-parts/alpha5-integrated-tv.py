@@ -30,7 +30,7 @@ replace_once(
 replace_once(
     "app/build.gradle",
     'versionCode 38\n\t\tversionName "1.28.1-tv"',
-    'versionCode 47\n\t\tversionName "1.28.1-glossawhale-alpha6"'
+    'versionCode 48\n\t\tversionName "1.28.1-glossawhale-alpha7"'
 )
 replace_once(
     "app/build.gradle",
@@ -41,6 +41,20 @@ replace_once(
     "app/src/main/AndroidManifest.xml",
     '    <application\n        android:allowBackup="true"',
     '    <application\n        android:usesCleartextTraffic="true"\n        android:allowBackup="true"'
+)
+replace_once(
+    "app/src/main/AndroidManifest.xml",
+    """    </application>""",
+    """        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="com.darkscorpion.glossawhale.tv.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/glossa_file_paths" />
+        </provider>
+    </application>"""
 )
 replace_once(
     "app/src/main/res/values/strings.xml",
@@ -550,11 +564,41 @@ replace_once(
                                     }
                                 },
                                 confirmButton = {
-                                    androidx.compose.material3.TextButton(onClick = {
-                                        try { crashFile.delete() } catch (_: Exception) {}
-                                        previousExitDiagnostic = null
-                                        previousCrashState.value = null
-                                    }) { androidx.compose.material3.Text("Kaydı kapat") }
+                                    androidx.compose.foundation.layout.Row {
+                                        androidx.compose.material3.TextButton(onClick = {
+                                            try {
+                                                val reportZip = java.io.File(cacheDir, "GlossaWhaleOS-crash-report.zip")
+                                                java.util.zip.ZipOutputStream(reportZip.outputStream()).use { zip ->
+                                                    val reportFiles = mutableListOf<java.io.File>()
+                                                    if (crashFile.exists()) reportFiles.add(crashFile)
+                                                    java.io.File(filesDir, "session_logs").listFiles()?.filter { it.isFile }?.let { reportFiles.addAll(it) }
+                                                    val quitFile = java.io.File(filesDir, "glossa-last-session-quit.txt")
+                                                    if (quitFile.exists()) reportFiles.add(quitFile)
+                                                    reportFiles.distinctBy { it.absolutePath }.forEach { file ->
+                                                        zip.putNextEntry(java.util.zip.ZipEntry(file.name))
+                                                        file.inputStream().use { it.copyTo(zip) }
+                                                        zip.closeEntry()
+                                                    }
+                                                }
+                                                val uri = androidx.core.content.FileProvider.getUriForFile(this@MainActivity, "com.darkscorpion.glossawhale.tv.fileprovider", reportZip)
+                                                val send = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                                                    type = "application/zip"
+                                                    putExtra(android.content.Intent.EXTRA_STREAM, uri)
+                                                    putExtra(android.content.Intent.EXTRA_SUBJECT, "GlossaWhaleOS crash report")
+                                                    addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                                    clipData = android.content.ClipData.newUri(contentResolver, "Crash report", uri)
+                                                }
+                                                startActivity(android.content.Intent.createChooser(send, "Çökme raporunu paylaş"))
+                                            } catch (error: Exception) {
+                                                android.widget.Toast.makeText(this@MainActivity, "Rapor hazırlanamadı: " + error.message, android.widget.Toast.LENGTH_LONG).show()
+                                            }
+                                        }) { androidx.compose.material3.Text("Raporu paylaş") }
+                                        androidx.compose.material3.TextButton(onClick = {
+                                            try { crashFile.delete() } catch (_: Exception) {}
+                                            previousExitDiagnostic = null
+                                            previousCrashState.value = null
+                                        }) { androidx.compose.material3.Text("Kaydı kapat") }
+                                    }
                                 }
                             )
                         }"""
@@ -980,3 +1024,13 @@ replace_once(
 \t\t\t\tval elapsed = SystemClock.elapsedRealtime() - startTime"""
 )
 print("Alpha 6 local-first and diagnostic patches appended.")
+
+
+# FileProvider grants read-only access to the generated crash-report ZIP.
+paths = REMOTE / "app/src/main/res/xml/glossa_file_paths.xml"
+paths.parent.mkdir(parents=True, exist_ok=True)
+paths.write_text("""<?xml version="1.0" encoding="utf-8"?>
+<paths xmlns:android="http://schemas.android.com/apk/res/android">
+    <cache-path name="shared_reports" path="." />
+</paths>
+""", encoding="utf-8")
