@@ -30,7 +30,7 @@ replace_once(
 replace_once(
     "app/build.gradle",
     'versionCode 38\n\t\tversionName "1.28.1-tv"',
-    'versionCode 40\n\t\tversionName "1.28.1-glossawhale-alpha2"'
+    'versionCode 41\n\t\tversionName "1.28.1-glossawhale-alpha3"'
 )
 replace_once(
     "app/build.gradle",
@@ -481,6 +481,18 @@ private fun asciiJsonBody(text: String): ByteArray
 }
 '''
 (REMOTE / "app/src/main/java/com/chiaking/tv/ui/screens/stream/GlossaWhaleLayer.kt").write_text(helper, encoding="utf-8")
+
+// Reduce OCR frame allocations and sampling load for low-memory TV devices.
+replace_once(
+    "app/src/main/java/com/chiaking/tv/ui/screens/stream/GlossaWhaleLayer.kt",
+    "getBitmap(960, 540)",
+    "getBitmap(800, 450)"
+)
+replace_once(
+    "app/src/main/java/com/chiaking/tv/ui/screens/stream/GlossaWhaleLayer.kt",
+    "delay(850L)",
+    "delay(1200L)"
+)
 
 # Rename the phone-side app label, retaining its original application ID.
 phone_manifest = Path("GlossaWhaleOS/phone/src/main/AndroidManifest.xml")
