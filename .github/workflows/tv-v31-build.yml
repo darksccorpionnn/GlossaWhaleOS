@@ -1,0 +1,79 @@
+name: GlossaWhaleOS TV 3.1 Styled Subtitle Overlay
+
+on:
+  push:
+    branches:
+      - feat/glossawhale-v2-split-apps
+    paths:
+      - 'v2-src/tv/**'
+      - 'source-parts/v2-stage.py'
+      - '.github/workflows/tv-v31-build.yml'
+  workflow_dispatch:
+
+jobs:
+  build-tv-styled-overlay:
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Restore existing proven TV project and inject 3.1 receiver
+        shell: bash
+        run: |
+          cat source-parts/alpha2-a.b64 source-parts/alpha2-b.b64 > /tmp/source-alpha2.zip.b64
+          base64 --decode /tmp/source-alpha2.zip.b64 > /tmp/source-alpha2.zip
+          echo "b44ff1d70cc2bd7e231d12a2d1a6495e4091e98b3c000255066112e04c735ee7  /tmp/source-alpha2.zip" | sha256sum --check
+          unzip -q /tmp/source-alpha2.zip
+          python3 source-parts/v2-stage.py
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('GlossaWhaleOS/tv/build.gradle.kts')
+          text=p.read_text()
+          assert text.count('com.darkscorpion.glossawhale.tv.v21')==1
+          text=text.replace('com.darkscorpion.glossawhale.tv.v21',
+              'com.darkscorpion.glossawhale.tv.v31')
+          assert text.count('versionCode = 220')==1
+          text=text.replace('versionCode = 220','versionCode = 310')
+          text=text.replace('versionName = "2.2.0-psn-account-prep"',
+              'versionName = "3.1.0-styled-tv-overlay"')
+          p.write_text(text)
+          manifest=Path('GlossaWhaleOS/tv/src/main/AndroidManifest.xml')
+          xml=manifest.read_text()
+          assert 'GlossaWhaleOS 2.1 TV' in xml
+          manifest.write_text(xml.replace('GlossaWhaleOS 2.1 TV',
+              'GlossaWhaleOS 3.1 TV'))
+          main=Path('GlossaWhaleOS/tv/src/main/java/com/darkscorpion/glossasub/tv/TvActivity.java')
+          main.write_text(main.read_text().replace('TV STUDIO  ·  V2.1',
+              'TV STUDIO  ·  V3.1'))
+          PY
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: ''
+      - name: Install Android SDK platform
+        run: sdkmanager "platforms;android-35" "build-tools;35.0.0" "platform-tools"
+
+      - name: Compile 3.1 TV overlay APK
+        uses: gradle/gradle-build-action@v3
+        with:
+          gradle-version: '8.11.1'
+          arguments: -p GlossaWhaleOS --no-daemon --stacktrace :tv:assembleDebug
+
+      - name: Verify distinct TV package and publish
+        run: |
+          set -e
+          mkdir -p dist
+          cp GlossaWhaleOS/tv/build/outputs/apk/debug/tv-debug.apk dist/GlossaWhaleOS-3.1-TV-Stilli-Altyazi.apk
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging dist/GlossaWhaleOS-3.1-TV-Stilli-Altyazi.apk |
+            grep "name='com.darkscorpion.glossawhale.tv.v31'"
+          sha256sum dist/*.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: GlossaWhaleOS-3.1-TV-Styled-Overlay
+          path: dist/*.apk
+          if-no-files-found: error
