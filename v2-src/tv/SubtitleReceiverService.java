@@ -3,6 +3,8 @@ package com.darkscorpion.glossasub.tv;
 import android.app.*;
 import android.content.*;
 import android.graphics.PixelFormat;
+import android.graphics.Color;
+import android.util.DisplayMetrics;
 import android.net.wifi.WifiManager;
 import android.os.*;
 import android.provider.Settings;
@@ -33,6 +35,7 @@ public final class SubtitleReceiverService extends Service {
     private WindowManager windowManager;
     private LinearLayout bubbleContainer;
     private TextView bubbleText;
+    private WindowManager.LayoutParams bubbleParams;
     private Runnable clearTask;
     private volatile boolean alive=false;
     private String pin;
@@ -195,7 +198,7 @@ public final class SubtitleReceiverService extends Service {
         String text=data.optString("text","").trim();
         if(text.isEmpty() || text.length()>500) {respond(client,400,"Gecersiz altyazi");return;}
         int duration=Math.max(1800,Math.min(12000,data.optInt("duration",6200)));
-        showSubtitle(text,duration);
+        showSubtitle(text,duration,data.optJSONObject("style"));
         report("Türkçe altyazı alındı • "+text.substring(0,Math.min(38,text.length())));
         respond(client,200,"OK");
     }
@@ -211,7 +214,20 @@ public final class SubtitleReceiverService extends Service {
         output.flush();
     }
 
+    private static int bounded(int value,int min,int max) {
+        return Math.max(min,Math.min(max,value));
+    }
+    private static int trustedColor(int value,boolean background) {
+        int[] choices=background
+            ? new int[]{0xE5081020,0xAA081020,0x00000000,0xE5202642}
+            : new int[]{0xFFFFFFFF,0xFFFFEB70,0xFF65E6D6,0xFFB6FFB6};
+        for(int option:choices)if(option==value)return option;
+        return choices[0];
+    }
     private void showSubtitle(String text,int duration) {
+        showSubtitle(text,duration,null);
+    }
+    private void showSubtitle(String text,int duration,JSONObject style) {
         main.post(() -> {
             if(!Settings.canDrawOverlays(this) && Build.VERSION.SDK_INT>=23) {
                 report("Overlay izni yok • TV uygulamasından izin ver");
@@ -241,12 +257,38 @@ public final class SubtitleReceiverService extends Service {
                         WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE |
                         WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
                         PixelFormat.TRANSLUCENT);
-                    lp.gravity=Gravity.BOTTOM|Gravity.CENTER_HORIZONTAL;
-                    lp.y=GlossaUI.dp(this,70);
+                    lp.gravity=Gravity.TOP|Gravity.LEFT;
+                    lp.x=0;lp.y=0;
+                    bubbleParams=lp;
                     windowManager.addView(bubbleContainer,lp);
                 }
+                int size=style==null?26:bounded(style.optInt("size",26),16,54);
+                int x=style==null?50:bounded(style.optInt("x",50),0,100);
+                int y=style==null?87:bounded(style.optInt("y",87),0,100);
+                int font=trustedColor(style==null?0xFFFFFFFF:
+                    style.optInt("color",0xFFFFFFFF),false);
+                int backdrop=trustedColor(style==null?0xE5081020:
+                    style.optInt("background",0xE5081020),true);
+                bubbleText.setTextSize(size);
+                bubbleText.setTextColor(font);
+                bubbleText.setBackground(GlossaUI.solid(backdrop,12,this));
                 bubbleText.setText(text);
                 bubbleContainer.setVisibility(View.VISIBLE);
+
+                DisplayMetrics metrics=new DisplayMetrics();
+                windowManager.getDefaultDisplay().getRealMetrics(metrics);
+                int availableWidth=Math.max(250,metrics.widthPixels-GlossaUI.dp(this,30));
+                bubbleText.setMaxWidth(availableWidth);
+                bubbleContainer.measure(
+                    View.MeasureSpec.makeMeasureSpec(availableWidth,View.MeasureSpec.AT_MOST),
+                    View.MeasureSpec.makeMeasureSpec(metrics.heightPixels,View.MeasureSpec.AT_MOST));
+                int bubbleWidth=Math.max(1,bubbleContainer.getMeasuredWidth());
+                int bubbleHeight=Math.max(1,bubbleContainer.getMeasuredHeight());
+                bubbleParams.x=Math.round(
+                    (metrics.widthPixels-bubbleWidth)*(x/100f));
+                bubbleParams.y=Math.round(
+                    (metrics.heightPixels-bubbleHeight)*(y/100f));
+                windowManager.updateViewLayout(bubbleContainer,bubbleParams);
                 if(clearTask!=null) main.removeCallbacks(clearTask);
                 clearTask=() -> {if(bubbleContainer!=null)bubbleContainer.setVisibility(View.GONE);};
                 main.postDelayed(clearTask,duration);
