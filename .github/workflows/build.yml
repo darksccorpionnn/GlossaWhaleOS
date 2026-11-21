@@ -102,3 +102,5 @@ jobs:
             GlossaWhaleOS/tv/build/outputs/apk/debug/*.apk
             remote/chiaki-ng-androidtv/app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
+
+# Rebuild trigger for the crash-report sharing update.
