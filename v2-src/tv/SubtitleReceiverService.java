@@ -93,7 +93,7 @@ public final class SubtitleReceiverService extends Service {
             try(DatagramSocket socket=new DatagramSocket(DISCOVERY_PORT)) {
                 discoverySocket=socket;
                 socket.setSoTimeout(1200);
-                byte[] response=("GLOSSA_TV_DISCOVERY_RESPONSE v1\\nport:8799\\n").getBytes(StandardCharsets.US_ASCII);
+                byte[] response=("GLOSSA_TV_DISCOVERY_RESPONSE v1\nport:8799\n").getBytes(StandardCharsets.US_ASCII);
                 while(alive) {
                     byte[] buffer=new byte[256];
                     DatagramPacket request=new DatagramPacket(buffer,buffer.length);
