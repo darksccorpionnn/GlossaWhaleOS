@@ -528,7 +528,7 @@ replace_once(
                         if (previousCrashText.isNotBlank()) {
                             androidx.compose.material3.AlertDialog(
                                 onDismissRequest = { },
-                                title = { androidx.compose.material3.Text("Önceki oturumda uygulama çöktü") },
+                                title = { androidx.compose.material3.Text("Önceki oturum raporu") },
                                 text = {
                                     androidx.compose.foundation.layout.Column {
                                         androidx.compose.material3.Text(
@@ -540,6 +540,7 @@ replace_once(
                                 confirmButton = {
                                     androidx.compose.material3.TextButton(onClick = {
                                         try { crashFile.delete() } catch (_: Exception) {}
+                                        previousExitDiagnostic = null
                                         previousCrashState.value = null
                                     }) { androidx.compose.material3.Text("Kaydı kapat") }
                                 }
