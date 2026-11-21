@@ -35,6 +35,7 @@ class GlossaConsolesActivity : AppCompatActivity() {
     private lateinit var hint: TextView
     private lateinit var discover: TextView
     private lateinit var input: EditText
+    private lateinit var accountStatus: TextView
 
     private fun dp(x: Int) = GlossaTheme.dp(this,x)
     private fun gap(container: LinearLayout, height:Int) {
@@ -83,10 +84,11 @@ class GlossaConsolesActivity : AppCompatActivity() {
             "Remote Play için ikinci PSN hesabının Account ID'sini kaydet.")
         val accountText=getSharedPreferences("glossa_psn",MODE_PRIVATE)
             .getString("account_id","").orEmpty()
-        add(account,t.text(this,if(accountText.isBlank())
+        accountStatus=t.text(this,if(accountText.isBlank())
             "○  Account ID henüz eklenmedi"
             else "●  Account ID kayıtlı",14,true,
-            if(accountText.isBlank()) t.muted else t.accent),12)
+            if(accountText.isBlank()) t.muted else t.accent)
+        add(account,accountStatus,12)
         add(account,action("PSN hesabım / Account ID al",false) {
             startActivity(Intent(this,PsnAccountActivity::class.java))
         })
@@ -203,6 +205,16 @@ class GlossaConsolesActivity : AppCompatActivity() {
         val reg=host.registeredHost ?: return
         vm.discoveryManager.sendWakeup(host.host,reg.rpRegistKey,reg.target.isPS5)
         hint.text="⏻  Uyandırma sinyali gönderildi. Konsol hazır olunca başlat."
+    }
+    override fun onResume() {
+        super.onResume()
+        if(::accountStatus.isInitialized) {
+            val exists=!getSharedPreferences("glossa_psn",MODE_PRIVATE)
+                .getString("account_id","").isNullOrEmpty()
+            accountStatus.text=if(exists)"●  Account ID kayıtlı"
+                else "○  Account ID henüz eklenmedi"
+            accountStatus.setTextColor(if(exists)t.accent else t.muted)
+        }
     }
     override fun onStart(){super.onStart();if(::vm.isInitialized)vm.discoveryManager.resume()}
     override fun onStop(){if(::vm.isInitialized)vm.discoveryManager.pause();super.onStop()}
