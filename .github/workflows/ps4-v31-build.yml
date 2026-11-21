@@ -1,0 +1,49 @@
+name: GlossaWhaleOS 3.1 Adjustable OCR and Styled TV Subtitles
+
+on:
+  push:
+    branches:
+      - feat/glossawhale-v2-split-apps
+    paths:
+      - 'source-parts/build-chiaki-v31.sh'
+      - 'v3-src/integrated/**'
+      - '.github/workflows/ps4-engine-build.yml'
+  workflow_dispatch:
+
+jobs:
+  build-chiaki-engine:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: ''
+      - name: Install Android API, native NDK and CMake
+        run: |
+          sdkmanager --install "platforms;android-35" "build-tools;35.0.0" "ndk;28.2.13676358" "cmake;3.22.1"
+      - name: Install protobuf compiler for native Chiaki JNI
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y protobuf-compiler
+      - name: Build integrated Chiaki + ML Kit + TV relay Android phone
+        run: bash source-parts/build-chiaki-v31.sh
+      - name: Verify integrated APK package, native libraries and translation classes
+        run: |
+          set -e
+          aapt="$ANDROID_HOME/build-tools/35.0.0/aapt"
+          "$aapt" dump badging dist-remote/GlossaWhaleOS-3.1-OCR-Kutusu-Ayarlar-Telefon.apk |
+            grep "name='com.darkscorpion.glossawhale.unifiedv31'"
+          unzip -l dist-remote/GlossaWhaleOS-3.1-OCR-Kutusu-Ayarlar-Telefon.apk | grep '\.so$' | head
+          unzip -l dist-remote/*.apk | grep 'classes.dex' | head -1
+          sha256sum dist-remote/*.apk
+      - name: Upload integrated PS4 translator phone APK with open-source notices
+        uses: actions/upload-artifact@v4
+        with:
+          name: GlossaWhaleOS-3.1-Phone-Adjustable-OCR-Subtitles
+          path: dist-remote/*
+          if-no-files-found: error
