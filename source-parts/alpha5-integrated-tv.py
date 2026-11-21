@@ -30,7 +30,7 @@ replace_once(
 replace_once(
     "app/build.gradle",
     'versionCode 38\n\t\tversionName "1.28.1-tv"',
-    'versionCode 41\n\t\tversionName "1.28.1-glossawhale-alpha3"'
+    'versionCode 42\n\t\tversionName "1.28.1-glossawhale-alpha4"'
 )
 replace_once(
     "app/build.gradle",
