@@ -482,7 +482,7 @@ private fun asciiJsonBody(text: String): ByteArray
 '''
 (REMOTE / "app/src/main/java/com/chiaking/tv/ui/screens/stream/GlossaWhaleLayer.kt").write_text(helper, encoding="utf-8")
 
-// Reduce OCR frame allocations and sampling load for low-memory TV devices.
+# Reduce OCR frame allocations and sampling load for low-memory TV devices.
 replace_once(
     "app/src/main/java/com/chiaking/tv/ui/screens/stream/GlossaWhaleLayer.kt",
     "getBitmap(960, 540)",
