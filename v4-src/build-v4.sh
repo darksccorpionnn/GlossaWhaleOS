@@ -97,6 +97,8 @@ xml=xml.replace('    </application>', '''        <activity android:name="com.met
             android:exported="false" />
         <activity android:name="com.metallic.chiaki.glossa.GlossaPairingProgressActivity"
             android:exported="false" />
+        <activity android:name="com.metallic.chiaki.glossa.GlossaRemoteSettingsActivity"
+            android:exported="false" />
     </application>''',1)
 manifest.write_text(xml)
 
