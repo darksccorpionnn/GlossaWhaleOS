@@ -69,7 +69,7 @@ public final class PhoneActivity extends Activity {
         LinearLayout hero=GlossaUI.column(this);
         hero.setBackground(GlossaUI.gradient(this,0xFF234F68,0xFF272D70,25));
         GlossaUI.pad(hero,this,23,23,23,24);
-        GlossaUI.add(hero,GlossaUI.text(this,"●  TELEFON MERKEZİ    V2.1",13,GlossaUI.TEAL,true));
+        GlossaUI.add(hero,GlossaUI.text(this,"●  TELEFON MERKEZİ    V2.1.1",13,GlossaUI.TEAL,true));
         GlossaUI.gap(hero,this,17);
         GlossaUI.add(hero,GlossaUI.text(this,"Cihazları keşfet.\nÇeviriyi hazırla.",25,GlossaUI.WHITE,true));
         GlossaUI.gap(hero,this,13);
@@ -290,7 +290,7 @@ public final class PhoneActivity extends Activity {
         tvStatus.setText("TV bağlantısı kontrol ediliyor…");
         worker.execute(() -> {
             String response=RelayClient.send(ip,pin,
-                "GlossaWhaleOS 2.1 hazır! Telefon ve TV bağlantısı kuruldu.");
+                "GlossaWhaleOS 2.1.1 hazır! Telefon ve TV bağlantısı kuruldu.");
             runOnUiThread(() -> {
                 if(!isFinishing() && !isDestroyed()) {
                     tvStatus.setText(response);

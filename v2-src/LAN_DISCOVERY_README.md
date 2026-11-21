@@ -10,3 +10,11 @@
 - Build the pair with `.github/workflows/v2-build.yml`.
 
 - V2.1 uses distinct Android package IDs (.v21) so old per-run debug signing keys do not block installation over v2.0. Old apps may be uninstalled manually after testing.
+
+## 2.1.1 console discovery fix
+- Probe uses the Wi-Fi Network rather than the default network (which might be cellular when Wi-Fi has no internet).
+- Three UDP broadcast attempts followed by a limited, rate-controlled /24 unicast probe on port 987 when broadcast yields no console.
+- PS4 response headers do not need to match an overly strict discovery version; report diagnostic packet counts.
+- Wi-Fi DHCP information is a compatibility fallback for Android network enumeration.
+- Optional direct-IP check remains for networks with client isolation or nonstandard subnets; PS4 IP is not required for the normal flow.
+- The new phone package id ends in `.v211`, avoiding signature conflicts with per-CI debug APKs from 2.1. TV protocol is unchanged and existing TV v2.1 APK can remain installed.

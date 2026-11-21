@@ -111,7 +111,12 @@ final class DiscoveryClient {
             socket.setBroadcast(true);
             // A mobile device can have mobile-data as default even with Wi-Fi connected.
             // Explicitly route this UDP socket through Wi-Fi, including networks without internet.
-            if(link.network!=null) link.network.bindSocket(socket);
+            if(link.network!=null) {
+                try {link.network.bindSocket(socket);}
+                catch(Exception ignored) {
+                    // Let directed local traffic try the system route if explicit binding fails.
+                }
+            }
             for(int pass=0;pass<3;pass++) {
                 for(InetAddress target:broadcasts) {
                     send(socket,target,PS4_PORT,PS4_SEARCH,result);
@@ -222,6 +227,26 @@ final class DiscoveryClient {
                 } catch(Exception ignored) {}
             }
         }
+        // Legacy DHCP fallback: some Android builds omit Wi-Fi from getAllNetworks
+        // when they consider the access point to have no internet.
+        try {
+            WifiManager wifi=(WifiManager)context.getApplicationContext()
+                .getSystemService(Context.WIFI_SERVICE);
+            android.net.DhcpInfo dhcp=wifi==null?null:wifi.getDhcpInfo();
+            if(dhcp!=null && dhcp.ipAddress!=0) {
+                int n=dhcp.ipAddress;
+                byte[] octets={(byte)n,(byte)(n>>>8),(byte)(n>>>16),(byte)(n>>>24)};
+                InetAddress addr=InetAddress.getByAddress(octets);
+                if(addr instanceof Inet4Address && addr.isSiteLocalAddress()) {
+                    int mask=dhcp.netmask;
+                    int broadcast=(n&mask)|~mask;
+                    byte[] b={(byte)broadcast,(byte)(broadcast>>>8),
+                        (byte)(broadcast>>>16),(byte)(broadcast>>>24)};
+                    return new WifiLink(null,(Inet4Address)addr,24,
+                        InetAddress.getByAddress(b));
+                }
+            }
+        } catch(Exception ignored){}
         return null;
     }
 
