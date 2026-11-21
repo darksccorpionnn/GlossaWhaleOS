@@ -3,6 +3,7 @@ package com.darkscorpion.glossasub.tv;
 import android.app.*;
 import android.content.*;
 import android.graphics.PixelFormat;
+import android.net.wifi.WifiManager;
 import android.os.*;
 import android.provider.Settings;
 import android.view.*;
@@ -28,6 +29,7 @@ public final class SubtitleReceiverService extends Service {
     private Thread listener;
     private Thread discoveryListener;
     private DatagramSocket discoverySocket;
+    private WifiManager.MulticastLock wifiDiscoveryLock;
     private WindowManager windowManager;
     private LinearLayout bubbleContainer;
     private TextView bubbleText;
@@ -89,6 +91,15 @@ public final class SubtitleReceiverService extends Service {
 
     /** Announces the TV on local Wi-Fi without revealing its six-digit pairing PIN. */
     private void startDiscoveryResponder() {
+        try {
+            WifiManager wifi=(WifiManager)getApplicationContext()
+                .getSystemService(Context.WIFI_SERVICE);
+            if(wifi!=null) {
+                wifiDiscoveryLock=wifi.createMulticastLock("GlossaWhaleOS-TV-Discovery");
+                wifiDiscoveryLock.setReferenceCounted(false);
+                wifiDiscoveryLock.acquire();
+            }
+        } catch(Exception ignored) {wifiDiscoveryLock=null;}
         discoveryListener=new Thread(() -> {
             try(DatagramSocket socket=new DatagramSocket(DISCOVERY_PORT)) {
                 discoverySocket=socket;
@@ -256,6 +267,8 @@ public final class SubtitleReceiverService extends Service {
         alive=false;
         if(server!=null) {try {server.close();}catch(IOException ignored){}}
         if(discoverySocket!=null) discoverySocket.close();
+        if(wifiDiscoveryLock!=null && wifiDiscoveryLock.isHeld())
+            try {wifiDiscoveryLock.release();}catch(Exception ignored){}
         main.post(() -> {
             if(clearTask!=null)main.removeCallbacks(clearTask);
             if(bubbleContainer!=null && windowManager!=null) {
