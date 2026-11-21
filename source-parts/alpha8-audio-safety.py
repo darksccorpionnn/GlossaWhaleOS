@@ -543,3 +543,15 @@ static void android_chiaki_audio_decoder_frame(uint8_t *buf, size_t buf_size, vo
 )
 
 print("Alpha 8 serialized MediaCodec audio fix applied.")
+
+
+# Bump the Android version so Alpha 8 installs as an update over Alpha 7.
+app_gradle = REMOTE.parent / "app" / "build.gradle"
+gradle_source = app_gradle.read_text(encoding="utf-8")
+old_version = 'versionCode 48\n\t\tversionName "1.28.1-glossawhale-alpha7"'
+new_version = 'versionCode 49\n\t\tversionName "1.28.1-glossawhale-alpha8"'
+if gradle_source.count(old_version) != 1:
+    raise SystemExit("Could not uniquely locate the Alpha 7 app version in app/build.gradle")
+app_gradle.write_text(gradle_source.replace(old_version, new_version, 1), encoding="utf-8")
+
+print("Alpha 8 versionCode 49 / versionName applied.")
