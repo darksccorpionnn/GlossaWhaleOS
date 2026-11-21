@@ -168,7 +168,9 @@ public final class GlossaQuickPanel extends ScrollView {
         section("ARAYÜZ RENKLERİ");
         root.addView(small("Telefonun Glossa ekranlarında kullanılacak vurgu rengini seç."));
         Spinner themes=spinner(GlossaTheme.NAMES,theme.index);
+        final boolean[] initialThemeEvent={true};
         watchedSpinner(themes,()->{
+            if(initialThemeEvent[0]) {initialThemeEvent[0]=false;return;}
             GlossaTheme.savePreset(activity,themes.getSelectedItemPosition());
         });
         root.addView(small("Özel RGB renkleri ana ekrandaki Tema bölümünden ayarlanır."));
