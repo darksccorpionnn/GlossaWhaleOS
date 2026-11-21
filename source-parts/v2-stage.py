@@ -81,7 +81,7 @@ phone_manifest = r'''<?xml version="1.0" encoding="utf-8"?>
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <queries>
-        <package android:name="com.playstation.remoteplay" />
+        <package android:name="com.darkscorpion.glossawhale.ps4remote" />
     </queries>
     <application
         android:label="GlossaWhaleOS 2.2 Telefon"
