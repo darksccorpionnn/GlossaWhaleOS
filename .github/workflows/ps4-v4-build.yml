@@ -36,9 +36,9 @@ jobs:
         run: |
           set -e
           aapt="$ANDROID_HOME/build-tools/35.0.0/aapt"
-          "$aapt" dump badging dist-remote/GlossaWhaleOS-4.0-Tek-Telefon-Uygulamasi.apk |
+          "$aapt" dump badging dist-remote/GlossaWhaleOS-4.0.1-PSN-Hesap-Ekleme-Telefon.apk |
             grep "name='com.darkscorpion.glossawhale.unifiedv4'"
-          unzip -l dist-remote/GlossaWhaleOS-4.0-Tek-Telefon-Uygulamasi.apk | grep '\.so$' | head
+          unzip -l dist-remote/GlossaWhaleOS-4.0.1-PSN-Hesap-Ekleme-Telefon.apk | grep '\.so$' | head
           unzip -l dist-remote/*.apk | grep 'classes.dex' | head -1
           sha256sum dist-remote/*.apk
       - name: Upload integrated PS4 translator phone APK with open-source notices
