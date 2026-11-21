@@ -19,6 +19,10 @@ gradle=app.read_text()
 before='applicationId "com.metallic.chiaki"'
 assert gradle.count(before)==1, 'Expected official Chiaki Android application ID'
 gradle=gradle.replace(before,'applicationId "com.darkscorpion.glossawhale.ps4remote"')
+# This helper only targets the user's 64-bit Android phone, not x86 emulators or TVs.
+needle='defaultConfig {'
+assert gradle.count(needle)==1
+gradle=gradle.replace(needle,needle+'\n        ndk { abiFilters "arm64-v8a" }',1)
 app.write_text(gradle)
 
 # Avoid a FileProvider collision with regular Chiaki when both apps are installed.
