@@ -1,4 +1,4 @@
-name: GlossaWhaleOS PS4 Chiaki Android remote engine
+name: GlossaWhaleOS 3.0 Unified PS4 OCR Translator
 
 on:
   push:
@@ -6,6 +6,7 @@ on:
       - feat/glossawhale-v2-split-apps
     paths:
       - 'source-parts/build-chiaki-phone-engine.sh'
+      - 'v3-src/integrated/**'
       - '.github/workflows/ps4-engine-build.yml'
   workflow_dispatch:
 
@@ -29,19 +30,20 @@ jobs:
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y protobuf-compiler
-      - name: Build open-source Chiaki native Android companion
+      - name: Build integrated Chiaki + ML Kit + TV relay Android phone
         run: bash source-parts/build-chiaki-phone-engine.sh
-      - name: Verify package ID and native libraries
+      - name: Verify integrated APK package, native libraries and translation classes
         run: |
           set -e
           aapt="$ANDROID_HOME/build-tools/35.0.0/aapt"
-          "$aapt" dump badging dist-remote/GlossaWhaleOS-PS4-Chiaki-Remote-Motoru.apk |
+          "$aapt" dump badging dist-remote/GlossaWhaleOS-3.0-Tek-Uygulama-PS4-Ceviri.apk |
             grep "name='com.darkscorpion.glossawhale.ps4remote'"
-          unzip -l dist-remote/GlossaWhaleOS-PS4-Chiaki-Remote-Motoru.apk | grep '\.so$' | head
+          unzip -l dist-remote/GlossaWhaleOS-3.0-Tek-Uygulama-PS4-Ceviri.apk | grep '\.so$' | head
+          unzip -l dist-remote/*.apk | grep 'classes.dex' | head -1
           sha256sum dist-remote/*.apk
-      - name: Upload Android Remote Play engine and licensing notes
+      - name: Upload integrated PS4 translator phone APK with open-source notices
         uses: actions/upload-artifact@v4
         with:
-          name: GlossaWhaleOS-Chiaki-PS4-engine-Android
+          name: GlossaWhaleOS-3.0-Phone-Chiaki-OCR-Translation
           path: dist-remote/*
           if-no-files-found: error
