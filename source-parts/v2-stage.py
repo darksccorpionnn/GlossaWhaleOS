@@ -57,10 +57,13 @@ for module in ("phone", "tv"):
             "com.google.mlkit:translate:17.0.3",
         ):
             if dependency not in gradle:
-                gradle = gradle.replace(
-                    "dependencies {",
-                    'dependencies {\n    implementation("' + dependency + '")', 1
-                )
+                if "dependencies {" in gradle:
+                    gradle = gradle.replace(
+                        "dependencies {",
+                        'dependencies {\n    implementation("' + dependency + '")', 1
+                    )
+                else:
+                    gradle += '\ndependencies {\n    implementation("' + dependency + '")\n}\n'
         if "com.google.mlkit:translate:17.0.3" not in gradle:
             raise SystemExit("Missing offline translation dependency")
     gradle_path.write_text(gradle, encoding="utf-8")
