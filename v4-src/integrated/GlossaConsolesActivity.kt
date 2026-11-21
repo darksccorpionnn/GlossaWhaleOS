@@ -37,7 +37,7 @@ class GlossaConsolesActivity : AppCompatActivity() {
     private lateinit var input: EditText
     private lateinit var accountStatus: TextView
 
-    private fun dp(x: Int) = GlossaTheme.dp(this,x)
+    private fun dp(x: Int) = GlossaTheme.dp(this,x.toFloat())
     private fun gap(container: LinearLayout, height:Int) {
         container.addView(View(this),LinearLayout.LayoutParams(1,dp(height)))
     }
@@ -118,7 +118,7 @@ class GlossaConsolesActivity : AppCompatActivity() {
             isSingleLine=true
             inputType=android.text.InputType.TYPE_CLASS_PHONE
             setPadding(dp(12),dp(13),dp(12),dp(13))
-            background=GlossaTheme.shape(this@GlossaConsolesActivity,0xFF203652,12)
+            background=GlossaTheme.shape(this@GlossaConsolesActivity,0xFF203652.toInt(),12)
         }
         add(manual,input,11)
         add(manual,action("＋  PS4 IP adresini listeye ekle",false) {
