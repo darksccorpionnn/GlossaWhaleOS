@@ -21,7 +21,7 @@ class GlossaRemoteSettingsActivity:AppCompatActivity() {
     private lateinit var theme:GlossaTheme
     private lateinit var prefs:Preferences
     private lateinit var root:LinearLayout
-    private fun dp(n:Int)=GlossaTheme.dp(this,n)
+    private fun dp(n:Int)=GlossaTheme.dp(this,n.toFloat())
     private fun add(v:View,bottom:Int=0) {
         val lp=LinearLayout.LayoutParams(-1,-2)
         lp.bottomMargin=dp(bottom)
