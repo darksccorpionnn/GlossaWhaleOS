@@ -546,7 +546,7 @@ print("Alpha 8 serialized MediaCodec audio fix applied.")
 
 
 # Bump the Android version so Alpha 8 installs as an update over Alpha 7.
-app_gradle = REMOTE.parent / "app" / "build.gradle"
+app_gradle = REMOTE.parent.parent / "app" / "build.gradle"
 gradle_source = app_gradle.read_text(encoding="utf-8")
 old_version = 'versionCode 48\n\t\tversionName "1.28.1-glossawhale-alpha7"'
 new_version = 'versionCode 49\n\t\tversionName "1.28.1-glossawhale-alpha8"'
