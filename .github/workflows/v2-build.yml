@@ -1,0 +1,65 @@
+name: GlossaWhaleOS 2.0 - Phone and TV
+
+on:
+  push:
+    branches:
+      - feat/glossawhale-v2-split-apps
+    paths:
+      - 'v2-src/**'
+      - 'source-parts/v2-stage.py'
+      - '.github/workflows/v2-build.yml'
+  workflow_dispatch:
+
+jobs:
+  build-v2:
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Reassemble existing Android Gradle project (without old native Chiaki)
+        shell: bash
+        run: |
+          cat source-parts/alpha2-a.b64 source-parts/alpha2-b.b64 > /tmp/source-alpha2.zip.b64
+          base64 --decode /tmp/source-alpha2.zip.b64 > /tmp/source-alpha2.zip
+          echo "b44ff1d70cc2bd7e231d12a2d1a6495e4091e98b3c000255066112e04c735ee7  /tmp/source-alpha2.zip" | sha256sum --check
+          unzip -q /tmp/source-alpha2.zip
+          python3 source-parts/v2-stage.py
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: ''
+
+      - name: Install Android platform and tools
+        run: sdkmanager "platforms;android-35" "build-tools;35.0.0" "platform-tools"
+
+      - name: Compile V2 Android APKs
+        uses: gradle/gradle-build-action@v3
+        with:
+          gradle-version: '8.11.1'
+          arguments: -p GlossaWhaleOS --no-daemon --stacktrace :phone:assembleDebug :tv:assembleDebug
+
+      - name: Verify both deliverables
+        shell: bash
+        run: |
+          set -e
+          mkdir -p dist
+          cp GlossaWhaleOS/phone/build/outputs/apk/debug/phone-debug.apk dist/GlossaWhaleOS-2-Telefon-alpha1.apk
+          cp GlossaWhaleOS/tv/build/outputs/apk/debug/tv-debug.apk dist/GlossaWhaleOS-2-TV-alpha1.apk
+          aapt="$ANDROID_HOME/build-tools/35.0.0/aapt"
+          "$aapt" dump badging dist/GlossaWhaleOS-2-Telefon-alpha1.apk | grep "name='com.darkscorpion.glossawhale.phone.v2'"
+          "$aapt" dump badging dist/GlossaWhaleOS-2-TV-alpha1.apk | grep "name='com.darkscorpion.glossawhale.tv.v2'"
+          sha256sum dist/*.apk
+
+      - name: Upload phone and TV APKs
+        uses: actions/upload-artifact@v4
+        with:
+          name: GlossaWhaleOS-2-alpha1-two-apps
+          path: dist/*.apk
+          if-no-files-found: error
