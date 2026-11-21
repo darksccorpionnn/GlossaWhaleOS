@@ -30,6 +30,8 @@ public final class PhoneActivity extends Activity {
     private TextView status;
     private TextView tvStatus;
     private TextView ps4Status;
+    private TextView ps4Diagnostics;
+    private EditText manualPs4Ip;
     private TextView live;
     private boolean registered=false;
 
@@ -80,10 +82,32 @@ public final class PhoneActivity extends Activity {
             "Telefon ve PS4 aynı ağdaysa cihazın adı ve IP adresi otomatik algılanır.");
         ps4Status=GlossaUI.text(this,"PS4 taraması bekleniyor…",16,GlossaUI.TEAL,true);
         GlossaUI.add(ps4,ps4Status);
+        GlossaUI.gap(ps4,this,9);
+        ps4Diagnostics=GlossaUI.text(this,
+            "Ağ tanılama bilgileri taramadan sonra burada görünecek.",
+            12,GlossaUI.MUTED,false);
+        GlossaUI.add(ps4,ps4Diagnostics);
         GlossaUI.gap(ps4,this,14);
         TextView scan=GlossaUI.button(this,"↻  PS4 ve TV'yi yeniden tara",true);
         scan.setOnClickListener(v -> scanNetwork());
         GlossaUI.add(ps4,scan);
+        GlossaUI.gap(ps4,this,15);
+        manualPs4Ip=GlossaUI.field(this,
+            "İsteğe bağlı: PS4 IP adresi (otomatik bulunamazsa)",
+            prefs.getString("ps4_manual_ip",""),false);
+        ps4.addView(manualPs4Ip,GlossaUI.spaced(this,10));
+        TextView tryManual=GlossaUI.button(this,"Bu IP'deki PS4'ü kontrol et",false);
+        tryManual.setOnClickListener(v -> {
+            String ip=manualPs4Ip.getText().toString().trim();
+            if(!RelayClient.validLocalIp(ip)) {
+                Toast.makeText(this,"Geçerli bir yerel PS4 IP'si gir.",
+                    Toast.LENGTH_LONG).show();
+                return;
+            }
+            prefs.edit().putString("ps4_manual_ip",ip).putString("ps4_ip",ip).apply();
+            scanNetwork();
+        });
+        GlossaUI.add(ps4,tryManual);
         GlossaUI.gap(ps4,this,13);
         GlossaUI.add(ps4,GlossaUI.text(this,
             "PS4 eşleştirme kodu: PS4 → Ayarlar → Uzaktan Oynatma Bağlantı Ayarları → Cihaz Ekle.\n" +
@@ -152,12 +176,15 @@ public final class PhoneActivity extends Activity {
         ps4Status.setText("PS4 aranıyor • UDP 987…");
         tvStatus.setText("TV aranıyor • Wi-Fi…");
         worker.execute(() -> {
-            DiscoveryClient.Result result=DiscoveryClient.scan(getApplicationContext());
+            DiscoveryClient.Result result=DiscoveryClient.scan(
+                getApplicationContext(),prefs.getString("ps4_ip",""));
             runOnUiThread(() -> {
                 scanning.set(false);
                 if(isFinishing() || isDestroyed()) return;
+                ps4Diagnostics.setText(result.diagnostics());
                 if(result.consoles.isEmpty()) {
-                    ps4Status.setText("PS4 bulunamadı. PS4'ün açık olduğundan ve aynı Wi-Fi'de olduğundan emin ol.");
+                    ps4Status.setText("PS4 bulunamadı. Tarama iki yöntemle denendi. " +
+                        "Ağ bilgilerini kontrol et; PS4 IP'sini biliyorsan alttaki yedek alanı kullan.");
                 } else {
                     DiscoveryClient.Ps4 preferred=result.consoles.get(0);
                     String oldId=prefs.getString("ps4_id","");
@@ -192,7 +219,10 @@ public final class PhoneActivity extends Activity {
                             " • Bağlanmak için TV'deki kodu bir kez gir.");
                     }
                 }
-                if(!result.error.isEmpty()) status.setText(result.error);
+                if(!result.error.isEmpty()) {
+                    status.setText(result.error);
+                    ps4Diagnostics.setText(result.error+"\n"+result.diagnostics());
+                }
             });
         });
     }
