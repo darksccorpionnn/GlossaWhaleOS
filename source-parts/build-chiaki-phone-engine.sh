@@ -39,6 +39,20 @@ for p in src.rglob('*'):
     if changed!=content:
         p.write_text(changed)
 
+# Critical: changing applicationId can make Android resolve relative Activity
+# names against the new package, while compiled Kotlin classes retain
+# com.metallic.chiaki. Make all manifest Activity classes fully qualified.
+manifest=Path('android/app/src/main/AndroidManifest.xml')
+xml=manifest.read_text()
+for activity in ('main.MainActivity','stream.StreamActivity',
+                 'settings.SettingsActivity','regist.RegistActivity',
+                 'regist.RegistExecuteActivity',
+                 'manualconsole.EditManualConsoleActivity'):
+    old='android:name=".'+activity+'"'
+    assert xml.count(old)==1, f'Chiaki manifest entry missing: {activity}'
+    xml=xml.replace(old,'android:name="com.metallic.chiaki.'+activity+'"')
+manifest.write_text(xml)
+
 strings=Path('android/app/src/main/res/values/strings.xml')
 st=strings.read_text()
 assert '<string name="app_name">Chiaki</string>' in st
