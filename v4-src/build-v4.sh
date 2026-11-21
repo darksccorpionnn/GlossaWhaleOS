@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: AGPL-3.0-only
-# Build integrated GlossaWhaleOS 4.0 phone app from Chiaki-ng.
+# Build integrated GlossaWhaleOS 4.2 phone app from Chiaki-ng.
 # Chiaki-ng's original source and licenses remain at the pinned upstream repository.
 set -euo pipefail
 CHI_SHA="43728af2e639fecb8a7af1cd68c29820a40de973"
@@ -18,13 +18,13 @@ app=Path('android/app/build.gradle')
 gradle=app.read_text()
 before='applicationId "com.metallic.chiaki"'
 assert gradle.count(before)==1, 'Expected official Chiaki Android application ID'
-gradle=gradle.replace(before,'applicationId "com.darkscorpion.glossawhale.unifiedv4"')
+gradle=gradle.replace(before,'applicationId "com.darkscorpion.glossawhale.unifiedv42"')
 # The verified 3.1 build had versionCode 12. V4 starts a numbered release
 # line so upgrades can eventually preserve registration with stable signing.
 assert gradle.count('versionCode 12')==1
-gradle=gradle.replace('versionCode 12','versionCode 41')
+gradle=gradle.replace('versionCode 12','versionCode 42')
 assert gradle.count('versionName chiakiVersion')==1
-gradle=gradle.replace('versionName chiakiVersion','versionName "4.0.1-beta2"')
+gradle=gradle.replace('versionName chiakiVersion','versionName "4.2.0-beta1"')
 deps='dependencies {'
 assert gradle.count(deps)==1
 gradle=gradle.replace(deps,deps+"\n    implementation 'com.google.mlkit:text-recognition:16.0.1'\n    implementation 'com.google.mlkit:translate:17.0.3'",1)
@@ -44,7 +44,7 @@ for p in src.rglob('*'):
     except UnicodeError:
         continue
     changed=content.replace('com.metallic.chiaki.fileprovider',
-        'com.darkscorpion.glossawhale.unifiedv4.fileprovider')
+        'com.darkscorpion.glossawhale.unifiedv42.fileprovider')
     if changed!=content:
         p.write_text(changed)
 
@@ -91,6 +91,12 @@ xml=xml.replace('    </application>', '''        <activity android:name="com.met
             android:exported="false" />
         <activity android:name="com.metallic.chiaki.glossa.PsnAccountActivity"
             android:exported="false" />
+        <activity android:name="com.metallic.chiaki.glossa.GlossaConsolesActivity"
+            android:exported="false" />
+        <activity android:name="com.metallic.chiaki.glossa.GlossaPairingActivity"
+            android:exported="false" />
+        <activity android:name="com.metallic.chiaki.glossa.GlossaPairingProgressActivity"
+            android:exported="false" />
     </application>''',1)
 manifest.write_text(xml)
 
@@ -111,7 +117,7 @@ strings=Path('android/app/src/main/res/values/strings.xml')
 st=strings.read_text()
 assert '<string name="app_name">Chiaki</string>' in st
 strings.write_text(st.replace('<string name="app_name">Chiaki</string>',
-    '<string name="app_name">GlossaWhaleOS 4.0</string>'))
+    '<string name="app_name">GlossaWhaleOS 4.2</string>'))
 # Extend Chiaki UI to offer GlossaWhaleOS pairing & on-device translation.
 menu=Path('android/app/src/main/res/menu/main.xml')
 menu_text=menu.read_text()
@@ -253,6 +259,7 @@ PY
 mkdir -p android/app/src/main/java/com/metallic/chiaki/glossa
 cp "${GITHUB_WORKSPACE}/v3-src/integrated/"*.java android/app/src/main/java/com/metallic/chiaki/glossa/
 cp "${GITHUB_WORKSPACE}/v4-src/integrated/"*.java android/app/src/main/java/com/metallic/chiaki/glossa/
+cp "${GITHUB_WORKSPACE}/v4-src/integrated/"*.kt android/app/src/main/java/com/metallic/chiaki/glossa/
 
 export JAVA_HOME="${JAVA_HOME:-/opt/hostedtoolcache/Java_Temurin-Hotspot_jdk/17}"
 cd android
@@ -260,10 +267,10 @@ chmod +x gradlew
 ./gradlew --no-daemon --stacktrace --max-workers=2 :app:assembleDebug
 mkdir -p "${GITHUB_WORKSPACE}/dist-remote"
 cp app/build/outputs/apk/debug/app-debug.apk \
-  "${GITHUB_WORKSPACE}/dist-remote/GlossaWhaleOS-4.0.1-PSN-Hesap-Ekleme-Telefon.apk"
+  "${GITHUB_WORKSPACE}/dist-remote/GlossaWhaleOS-4.2-Tam-Birlesik-PS4-Telefon.apk"
 
 cat > "${GITHUB_WORKSPACE}/dist-remote/SOURCE_AND_LICENSE.txt" <<'TXT'
-GlossaWhaleOS 4.0 Integrated Phone App: Chiaki Remote Play + OCR + translation
+GlossaWhaleOS 4.2 Integrated Phone App: Chiaki Remote Play + OCR + translation
 Upstream open-source project: chiaki-ng/chiaki-ng
 Upstream repository: https://github.com/chiaki-ng/chiaki-ng
 Source revision: 43728af2e639fecb8a7af1cd68c29820a40de973
