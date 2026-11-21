@@ -15,6 +15,10 @@ import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
+import android.widget.SeekBar;
+import android.widget.Spinner;
+import android.widget.ArrayAdapter;
+import android.widget.AdapterView;
 import android.widget.TextView;
 
 import java.util.concurrent.ExecutorService;
@@ -30,7 +34,13 @@ public final class GlossaSettingsActivity extends Activity {
     private static final int PANEL=0xFF172A43;
     private EditText ip, pin;
     private CheckBox active;
-    private TextView state;
+    private TextView state,preview,sizeLabel,xLabel,yLabel;
+    private SeekBar sizeBar,xBar,yBar;
+    private Spinner colorBox,backgroundBox;
+    private static final int[] COLORS={0xFFFFFFFF,0xFFFFEB70,0xFF65E6D6,0xFFB6FFB6};
+    private static final int[] BACKGROUNDS={0xE5081020,0xAA081020,0x00000000,0xE5202642};
+    private static final String[] COLOR_NAMES={"Beyaz","Sarı","Turkuaz","Açık yeşil"};
+    private static final String[] BG_NAMES={"Koyu siyah","Yarı şeffaf","Arka plan yok","Lacivert"};
     private ExecutorService worker=Executors.newSingleThreadExecutor();
 
     private int dp(int x) {return Math.round(getResources().getDisplayMetrics().density*x);}
@@ -66,6 +76,33 @@ public final class GlossaSettingsActivity extends Activity {
         field.setTextSize(16);
         field.setInputType(InputType.TYPE_CLASS_TEXT);
         return field;
+    }
+    private static int optionIndex(int[] options,int value) {
+        for(int i=0;i<options.length;i++) if(options[i]==value)return i;
+        return 0;
+    }
+    private Spinner choice(String[] options,int initial) {
+        Spinner spinner=new Spinner(this);
+        ArrayAdapter<String> adapter=new ArrayAdapter<String>(
+            this,android.R.layout.simple_spinner_dropdown_item,options);
+        spinner.setAdapter(adapter);
+        spinner.setSelection(initial);
+        return spinner;
+    }
+    private SeekBar slider(int max,int value) {
+        SeekBar bar=new SeekBar(this);
+        bar.setMax(max);bar.setProgress(Math.max(0,Math.min(max,value)));
+        return bar;
+    }
+    private void updatePreview() {
+        if(preview==null)return;
+        int size=18+sizeBar.getProgress();
+        sizeLabel.setText("Yazı büyüklüğü: "+size+" sp");
+        xLabel.setText("Yatay konum: %"+xBar.getProgress());
+        yLabel.setText("Dikey konum: %"+yBar.getProgress());
+        preview.setTextSize(size);
+        preview.setTextColor(COLORS[colorBox.getSelectedItemPosition()]);
+        preview.setBackground(background(BACKGROUNDS[backgroundBox.getSelectedItemPosition()],12));
     }
     private Button button(String caption) {
         Button b=new Button(this);
@@ -129,7 +166,9 @@ public final class GlossaSettingsActivity extends Activity {
             state.setText("TV'ye bağlanılıyor…");
             String host=ip.getText().toString().trim(), code=pin.getText().toString().trim();
             worker.execute(() -> {
-                String response=GlossaTvClient.request(host,code,"GlossaWhaleOS 3.0 hazır! Türkçe altyazı testi.");
+                String response=GlossaTvClient.request(host,code,
+                    "GlossaWhaleOS 3.1 • Yazı rengi ve konumu testi.",
+                    getSharedPreferences(PREF,MODE_PRIVATE));
                 runOnUiThread(() -> {if(!isFinishing()&&!isDestroyed()) state.setText(response.equals("OK")?
                     "✓ TV altyazı alıcısı çalışıyor":response);});
             });
@@ -138,6 +177,64 @@ public final class GlossaSettingsActivity extends Activity {
         state=txt(prefs.getString("last_state","Çeviri kapalı."),14,WHITE,false);
         panel.addView(state);
         root.addView(panel);
+        gap(root,17);
+
+        LinearLayout style=new LinearLayout(this);
+        style.setOrientation(LinearLayout.VERTICAL);
+        style.setBackground(background(PANEL,18));
+        pad(style,18,19);
+        style.addView(txt("TV ALTYAZI GÖRÜNÜMÜ",14,CYAN,true));
+        gap(style,10);
+        style.addView(txt("Ayarlar sonraki altyazı geldiğinde TV'ye uygulanır. "
+                +"Yatay ve dikey konum yüzdeleri ekranın kenarından hesaplanır.",
+            13,MUTED,false));
+        gap(style,10);
+
+        sizeLabel=txt("",15,WHITE,true);
+        style.addView(sizeLabel);
+        sizeBar=slider(34,prefs.getInt("style_size",26)-18);
+        style.addView(sizeBar);
+        xLabel=txt("",15,WHITE,true);
+        style.addView(xLabel);
+        xBar=slider(100,prefs.getInt("style_x",50));
+        style.addView(xBar);
+        yLabel=txt("",15,WHITE,true);
+        style.addView(yLabel);
+        yBar=slider(100,prefs.getInt("style_y",87));
+        style.addView(yBar);
+        gap(style,10);
+        style.addView(txt("Yazı rengi",14,WHITE,true));
+        colorBox=choice(COLOR_NAMES,optionIndex(COLORS,prefs.getInt("style_color",0xFFFFFFFF)));
+        style.addView(colorBox);
+        gap(style,8);
+        style.addView(txt("Yazı arka planı",14,WHITE,true));
+        backgroundBox=choice(BG_NAMES,
+            optionIndex(BACKGROUNDS,prefs.getInt("style_background",0xE5081020)));
+        style.addView(backgroundBox);
+        gap(style,12);
+        style.addView(txt("Canlı yazı örneği",13,MUTED,false));
+        gap(style,8);
+        preview=txt("Buradan çıkmamız gerekiyor!",24,WHITE,true);
+        preview.setGravity(android.view.Gravity.CENTER);
+        pad(preview,16,12);
+        style.addView(preview,new LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,ViewGroup.LayoutParams.WRAP_CONTENT));
+        SeekBar.OnSeekBarChangeListener move=new SeekBar.OnSeekBarChangeListener() {
+            @Override public void onProgressChanged(SeekBar bar,int progress,boolean user) {updatePreview();}
+            @Override public void onStartTrackingTouch(SeekBar bar) {}
+            @Override public void onStopTrackingTouch(SeekBar bar) {}
+        };
+        sizeBar.setOnSeekBarChangeListener(move);
+        xBar.setOnSeekBarChangeListener(move);
+        yBar.setOnSeekBarChangeListener(move);
+        AdapterView.OnItemSelectedListener choose=new AdapterView.OnItemSelectedListener() {
+            @Override public void onItemSelected(AdapterView<?> a,View v,int position,long id) {updatePreview();}
+            @Override public void onNothingSelected(AdapterView<?> a) {}
+        };
+        colorBox.setOnItemSelectedListener(choose);
+        backgroundBox.setOnItemSelectedListener(choose);
+        updatePreview();
+        root.addView(style);
         gap(root,17);
 
         LinearLayout notes=new LinearLayout(this);
@@ -171,6 +268,11 @@ public final class GlossaSettingsActivity extends Activity {
         getSharedPreferences(PREF,MODE_PRIVATE).edit()
             .putString("tv_ip",host)
             .putString("tv_pin",code)
+            .putInt("style_size",18+sizeBar.getProgress())
+            .putInt("style_x",xBar.getProgress())
+            .putInt("style_y",yBar.getProgress())
+            .putInt("style_color",COLORS[colorBox.getSelectedItemPosition()])
+            .putInt("style_background",BACKGROUNDS[backgroundBox.getSelectedItemPosition()])
             .putBoolean("enabled",enable && active.isChecked()
                 || !enable && getSharedPreferences(PREF,MODE_PRIVATE).getBoolean("enabled",false))
             .apply();
