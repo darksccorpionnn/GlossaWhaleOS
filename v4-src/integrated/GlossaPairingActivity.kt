@@ -28,7 +28,7 @@ class GlossaPairingActivity: AppCompatActivity() {
     private lateinit var pin:EditText
     private lateinit var account:TextView
     private lateinit var message:TextView
-    private fun dp(n:Int)=GlossaTheme.dp(this,n)
+    private fun dp(n:Int)=GlossaTheme.dp(this,n.toFloat())
     private fun gap(p:LinearLayout,n:Int) {
         p.addView(View(this),LinearLayout.LayoutParams(1,dp(n)))
     }
@@ -58,7 +58,7 @@ class GlossaPairingActivity: AppCompatActivity() {
             inputType=if(numeric) android.text.InputType.TYPE_CLASS_NUMBER
                 else android.text.InputType.TYPE_CLASS_PHONE
             setPadding(dp(12),dp(14),dp(12),dp(14))
-            background=GlossaTheme.shape(this@GlossaPairingActivity,0xFF203652,12)
+            background=GlossaTheme.shape(this@GlossaPairingActivity,0xFF203652.toInt(),12)
         }
     private val register=registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
