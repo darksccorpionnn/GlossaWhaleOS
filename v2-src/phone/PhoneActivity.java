@@ -10,32 +10,38 @@ import android.media.projection.MediaProjectionManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
-import android.view.Gravity;
-import android.view.View;
 import android.view.ViewGroup;
-import android.view.Window;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public final class PhoneActivity extends Activity {
     private static final int CAPTURE_REQUEST=4102;
+    private final ExecutorService worker=Executors.newSingleThreadExecutor();
+    private final AtomicBoolean scanning=new AtomicBoolean(false);
     private SharedPreferences prefs;
     private EditText tvIp;
     private EditText pairPin;
     private TextView status;
+    private TextView tvStatus;
+    private TextView ps4Status;
     private TextView live;
     private boolean registered=false;
 
-    private final BroadcastReceiver events = new BroadcastReceiver() {
-        @Override public void onReceive(Context ctx, Intent intent) {
+    private final BroadcastReceiver events=new BroadcastReceiver() {
+        @Override public void onReceive(Context ctx,Intent intent) {
             String value=intent.getStringExtra("status");
-            if (value!=null) { status.setText(value); prefs.edit().putString("last_status",value).apply(); }
+            if(value!=null) {
+                status.setText(value);
+                prefs.edit().putString("last_status",value).apply();
+            }
             String line=intent.getStringExtra("subtitle");
-            if (line!=null && !line.isEmpty()) live.setText(line);
+            if(line!=null && !line.isEmpty()) live.setText(line);
         }
     };
 
@@ -43,7 +49,7 @@ public final class PhoneActivity extends Activity {
         super.onCreate(b);
         getWindow().setStatusBarColor(GlossaUI.BG);
         getWindow().setNavigationBarColor(GlossaUI.BG);
-        prefs=getSharedPreferences("glossa_v2_phone", MODE_PRIVATE);
+        prefs=getSharedPreferences("glossa_v2_phone",MODE_PRIVATE);
         ScrollView scroll=new ScrollView(this);
         scroll.setFillViewport(true);
         scroll.setBackgroundColor(GlossaUI.BG);
@@ -52,54 +58,64 @@ public final class PhoneActivity extends Activity {
         scroll.addView(page,new ScrollView.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT,ViewGroup.LayoutParams.WRAP_CONTENT));
 
-        TextView overline=GlossaUI.text(this,"DARK SCORPION  /  GLOSSA LAB",12,GlossaUI.TEAL,true);
-        GlossaUI.add(page,overline);
+        GlossaUI.add(page,GlossaUI.text(this,"DARK SCORPION  /  GLOSSA LAB",12,GlossaUI.TEAL,true));
         GlossaUI.gap(page,this,11);
-        TextView title=GlossaUI.text(this,"GlossaWhaleOS",32,GlossaUI.WHITE,true);
-        GlossaUI.add(page,title);
-        GlossaUI.add(page,GlossaUI.text(this,"Türkçe oyun deneyimi, yeni nesil.",16,GlossaUI.MUTED,false));
+        GlossaUI.add(page,GlossaUI.text(this,"GlossaWhaleOS",32,GlossaUI.WHITE,true));
+        GlossaUI.add(page,GlossaUI.text(this,"PS4 ve TV'yi Wi-Fi'de otomatik bul.",16,GlossaUI.MUTED,false));
         GlossaUI.gap(page,this,23);
 
         LinearLayout hero=GlossaUI.column(this);
         hero.setBackground(GlossaUI.gradient(this,0xFF234F68,0xFF272D70,25));
         GlossaUI.pad(hero,this,23,23,23,24);
-        GlossaUI.add(hero,GlossaUI.text(this,"●  TELEFON MERKEZİ    V2.0",13,GlossaUI.TEAL,true));
+        GlossaUI.add(hero,GlossaUI.text(this,"●  TELEFON MERKEZİ    V2.1",13,GlossaUI.TEAL,true));
         GlossaUI.gap(hero,this,17);
-        GlossaUI.add(hero,GlossaUI.text(this,"Altyazıyı yakala.\nAnında Türkçeleştir.",25,GlossaUI.WHITE,true));
+        GlossaUI.add(hero,GlossaUI.text(this,"Cihazları keşfet.\nÇeviriyi hazırla.",25,GlossaUI.WHITE,true));
         GlossaUI.gap(hero,this,13);
-        status=GlossaUI.text(this,prefs.getString("last_status","Hazır • Henüz ekran yakalama başlatılmadı"),14,GlossaUI.WHITE,false);
+        status=GlossaUI.text(this,prefs.getString("last_status",
+            "Yerel ağ bağlantısı taranmaya hazır"),14,GlossaUI.WHITE,false);
         GlossaUI.add(hero,status);
         page.addView(hero,GlossaUI.spaced(this,19));
 
-        LinearLayout pairing=GlossaUI.card(this,"01  ·  Televizyon bağlantısı",
-            "TV'deki IP adresini ve altı haneli eşleştirme kodunu gir.");
-        tvIp=GlossaUI.field(this,"TV IP adresi (ör. 192.168.1.40)",prefs.getString("tv_ip",""),false);
+        LinearLayout ps4=GlossaUI.card(this,"01  ·  PS4 otomatik bulma",
+            "Telefon ve PS4 aynı ağdaysa cihazın adı ve IP adresi otomatik algılanır.");
+        ps4Status=GlossaUI.text(this,"PS4 taraması bekleniyor…",16,GlossaUI.TEAL,true);
+        GlossaUI.add(ps4,ps4Status);
+        GlossaUI.gap(ps4,this,14);
+        TextView scan=GlossaUI.button(this,"↻  PS4 ve TV'yi yeniden tara",true);
+        scan.setOnClickListener(v -> scanNetwork());
+        GlossaUI.add(ps4,scan);
+        GlossaUI.gap(ps4,this,13);
+        GlossaUI.add(ps4,GlossaUI.text(this,
+            "PS4 eşleştirme kodu: PS4 → Ayarlar → Uzaktan Oynatma Bağlantı Ayarları → Cihaz Ekle.\n" +
+            "Not: Bu sürüm PS4'ü keşfeder. PSN hesabıyla eşleştirme ve görüntü akışı henüz etkin değil.",
+            13,GlossaUI.MUTED,false));
+        page.addView(ps4,GlossaUI.spaced(this,16));
+
+        LinearLayout pairing=GlossaUI.card(this,"02  ·  TV otomatik bağlantısı",
+            "TV alıcısı açıksa IP adresi otomatik doldurulur. Güvenlik için TV'deki 6 haneli kod ilk kez girilir; ardından cihazda saklanır.");
+        tvStatus=GlossaUI.text(this,"TV henüz aranmadı.",14,GlossaUI.TEAL,false);
+        GlossaUI.add(pairing,tvStatus);
+        GlossaUI.gap(pairing,this,11);
+        tvIp=GlossaUI.field(this,"TV IP (otomatik bulunur; elle de girilebilir)",
+            prefs.getString("tv_ip",""),false);
         pairing.addView(tvIp,GlossaUI.spaced(this,10));
-        pairPin=GlossaUI.field(this,"6 haneli TV kodu",prefs.getString("pin",""),false);
+        pairPin=GlossaUI.field(this,"TV ekranındaki 6 haneli kod",
+            prefs.getString("pin",""),false);
         pairing.addView(pairPin,GlossaUI.spaced(this,12));
-        TextView save=GlossaUI.button(this,"Bağlantıyı kaydet",false);
+        TextView save=GlossaUI.button(this,"TV eşleştirmesini kaydet ve dene",false);
         save.setOnClickListener(v -> {
-            String ip=tvIp.getText().toString().trim();
-            String pin=pairPin.getText().toString().trim();
-            if (!RelayClient.validLocalIp(ip) || !pin.matches("[0-9]{6}")) {
-                Toast.makeText(this,"Geçerli yerel ağ IP'si ve 6 haneli kod gir.",Toast.LENGTH_LONG).show();
-                return;
-            }
-            prefs.edit().putString("tv_ip",ip).putString("pin",pin).apply();
-            status.setText("TV eşleştirme bilgisi kaydedildi");
+            if(!saveTvCredentials()) return;
+            testSubtitle();
         });
         GlossaUI.add(pairing,save);
         page.addView(pairing,GlossaUI.spaced(this,16));
 
-        LinearLayout action=GlossaUI.card(this,"02  ·  Canlı oyun çevirisi",
-            "Telefon ekranındaki İngilizce altyazıyı okur; ilk kullanımda İngilizce–Türkçe dil modeli indirilir. PS Remote Play ekranında da yakalama izni verilmesi gerekir.");
-        TextView start=GlossaUI.button(this,"▶   Ekran OCR ve çeviriyi başlat",true);
+        LinearLayout action=GlossaUI.card(this,"03  ·  Canlı altyazı çevirisi",
+            "Telefon ekranındaki İngilizce altyazıyı OCR ile okuyup çevirir. Bu, PS4 görüntüsü telefona ulaştığında kullanılabilir.");
+        TextView start=GlossaUI.button(this,"▶  Ekran OCR ve çeviriyi başlat",true);
         start.setOnClickListener(v -> beginCapture());
         action.addView(start,GlossaUI.spaced(this,11));
-        TextView remote=GlossaUI.button(this,"PS Remote Play uygulamasını aç",false);
-        remote.setOnClickListener(v -> openRemotePlay());
-        action.addView(remote,GlossaUI.spaced(this,11));
-        TextView stop=GlossaUI.button(this,"■   Çeviriyi durdur",false);
+        TextView stop=GlossaUI.button(this,"■  Çeviriyi durdur",false);
         stop.setOnClickListener(v -> {
             Intent intent=new Intent(this,OcrCaptureService.class);
             intent.setAction(OcrCaptureService.STOP);
@@ -109,7 +125,7 @@ public final class PhoneActivity extends Activity {
         GlossaUI.add(action,stop);
         page.addView(action,GlossaUI.spaced(this,16));
 
-        LinearLayout preview=GlossaUI.card(this,"03  ·  Canlı altyazı",
+        LinearLayout preview=GlossaUI.card(this,"04  ·  Canlı altyazı",
             "Çevrilen son cümle burada görüntülenir.");
         live=GlossaUI.text(this,"Henüz altyazı algılanmadı.",20,GlossaUI.TEAL,true);
         GlossaUI.add(preview,live);
@@ -119,70 +135,127 @@ public final class PhoneActivity extends Activity {
         GlossaUI.add(preview,test);
         page.addView(preview,GlossaUI.spaced(this,16));
 
-        LinearLayout note=GlossaUI.card(this,"Nasıl çalışır?",
-            "PS4 → PS Remote Play → telefonun ekran yakalama izni → OCR → cihazda Türkçe çeviri → yerel Wi-Fi → TV. Bu sürüm, PS Remote Play uygulamasının yerine geçmez. Korunan video ekranları Android tarafından yakalanamayabilir.");
+        LinearLayout note=GlossaUI.card(this,"Bağlantı durumu",
+            "PS4 ve TV keşfi yerel Wi-Fi üzerinden çalışır. PSN şifresi istenmez. " +
+            "PS4'e gerçek uzaktan oynatma bağlantısı ve video alma işlevi bu sürümde bulunmaz.");
         GlossaUI.add(note,GlossaUI.text(this,
-            "Gizlilik: Görüntü kareleri OCR için telefonda işlenir; çevrilen altyazı yerel ağdaki eşleştirilmiş TV'ye gönderilir.",
+            "Gizlilik: OCR ve çeviri telefonda çalışır. TV'ye yalnızca altyazı metni gönderilir. " +
+            "Bazı TV'ler HDMI üstünde üçüncü taraf altyazı katmanını göstermeyebilir.",
             13,GlossaUI.MUTED,false));
         GlossaUI.add(page,note);
         setContentView(scroll);
+        scanNetwork();
+    }
+
+    private void scanNetwork() {
+        if(!scanning.compareAndSet(false,true)) return;
+        ps4Status.setText("PS4 aranıyor • UDP 987…");
+        tvStatus.setText("TV aranıyor • Wi-Fi…");
+        worker.execute(() -> {
+            DiscoveryClient.Result result=DiscoveryClient.scan(getApplicationContext());
+            runOnUiThread(() -> {
+                scanning.set(false);
+                if(isFinishing() || isDestroyed()) return;
+                if(result.consoles.isEmpty()) {
+                    ps4Status.setText("PS4 bulunamadı. PS4'ün açık olduğundan ve aynı Wi-Fi'de olduğundan emin ol.");
+                } else {
+                    DiscoveryClient.Ps4 preferred=result.consoles.get(0);
+                    String oldId=prefs.getString("ps4_id","");
+                    for(DiscoveryClient.Ps4 p:result.consoles)
+                        if(p.id.equals(oldId)) {preferred=p;break;}
+                    prefs.edit().putString("ps4_id",preferred.id)
+                        .putString("ps4_ip",preferred.ip).apply();
+                    ps4Status.setText("✓  "+preferred.name+" • "+preferred.state+"\n"+
+                        "IP otomatik: "+preferred.ip+" • Sistem: "+preferred.systemVersion+
+                        (result.consoles.size()>1?"\nAğdaki PS4 sayısı: "+result.consoles.size():""));
+                }
+                if(result.tvAddresses.isEmpty()) {
+                    tvStatus.setText("TV alıcısı bulunamadı. TV'de GlossaWhaleOS'u açıp alıcı iznini ver.");
+                } else {
+                    String oldIp=prefs.getString("tv_ip","");
+                    String picked=result.tvAddresses.contains(oldIp)?oldIp:result.tvAddresses.get(0);
+                    tvIp.setText(picked);
+                    prefs.edit().putString("tv_ip",picked).apply();
+                    tvStatus.setText("✓  TV bulundu: "+picked+
+                        (pairPin.getText().toString().matches("[0-9]{6}")
+                        ?" • Kod kayıtlı, test gönderebilirsin."
+                        :" • Bağlanmak için TV'deki kodu bir kez gir."));
+                }
+                if(!result.error.isEmpty()) status.setText(result.error);
+            });
+        });
+    }
+
+    private boolean saveTvCredentials() {
+        String ip=tvIp.getText().toString().trim();
+        String pin=pairPin.getText().toString().trim();
+        if(!RelayClient.validLocalIp(ip) || !pin.matches("[0-9]{6}")) {
+            Toast.makeText(this,"TV bulunmalı ve 6 haneli TV kodu girilmeli.",
+                Toast.LENGTH_LONG).show();
+            return false;
+        }
+        prefs.edit().putString("tv_ip",ip).putString("pin",pin).apply();
+        return true;
     }
 
     @Override protected void onResume() {
         super.onResume();
-        if (!registered) {
+        if(!registered) {
             registerReceiver(events,new IntentFilter(OcrCaptureService.STATUS));
             registered=true;
         }
     }
     @Override protected void onPause() {
-        if (registered) { unregisterReceiver(events); registered=false; }
+        if(registered) {unregisterReceiver(events);registered=false;}
         super.onPause();
     }
+    @Override protected void onDestroy() {
+        worker.shutdownNow();
+        super.onDestroy();
+    }
+
     private void beginCapture() {
-        String ip=tvIp.getText().toString().trim();
-        String pin=pairPin.getText().toString().trim();
-        if(!RelayClient.validLocalIp(ip) || !pin.matches("[0-9]{6}")){
-            Toast.makeText(this,"Önce TV IP ve kodunu kaydet.",Toast.LENGTH_LONG).show();
+        if(!saveTvCredentials()) return;
+        MediaProjectionManager manager=(MediaProjectionManager)
+            getSystemService(Context.MEDIA_PROJECTION_SERVICE);
+        if(manager==null) {
+            status.setText("Bu cihaz ekran yakalamayı desteklemiyor.");
             return;
         }
-        prefs.edit().putString("tv_ip",ip).putString("pin",pin).apply();
-        MediaProjectionManager manager=(MediaProjectionManager)getSystemService(Context.MEDIA_PROJECTION_SERVICE);
-        if(manager==null) { status.setText("Bu cihaz ekran yakalamayı desteklemiyor."); return; }
         status.setText("Android ekran yakalama izni bekleniyor…");
         startActivityForResult(manager.createScreenCaptureIntent(),CAPTURE_REQUEST);
     }
+
     @Override protected void onActivityResult(int requestCode,int resultCode,Intent data) {
         super.onActivityResult(requestCode,resultCode,data);
-        if(requestCode==CAPTURE_REQUEST){
-            if(resultCode!=RESULT_OK || data==null) { status.setText("Ekran yakalama izni verilmedi."); return; }
+        if(requestCode==CAPTURE_REQUEST) {
+            if(resultCode!=RESULT_OK || data==null) {
+                status.setText("Ekran yakalama izni verilmedi.");return;
+            }
             Intent intent=new Intent(this,OcrCaptureService.class);
             intent.setAction(OcrCaptureService.START);
             intent.putExtra("resultCode",resultCode);
             intent.putExtra("resultData",data);
-            if(Build.VERSION.SDK_INT>=26) startForegroundService(intent); else startService(intent);
-            status.setText("Görüntü işleme başlatılıyor… PS Remote Play'i açabilirsin.");
+            if(Build.VERSION.SDK_INT>=26) startForegroundService(intent);
+            else startService(intent);
+            status.setText("OCR başlatılıyor… PS4 video akışı henüz entegre değil.");
         }
     }
+
     private void testSubtitle() {
-        String ip=tvIp.getText().toString().trim();
-        String pin=pairPin.getText().toString().trim();
-        if(!RelayClient.validLocalIp(ip) || !pin.matches("[0-9]{6}")) { status.setText("Önce TV IP ve kodunu gir."); return; }
-        status.setText("TV bağlantısı kontrol ediliyor…");
-        Executors.newSingleThreadExecutor().execute(() -> {
-            String result=RelayClient.send(ip,pin,"GlossaWhaleOS 2.0 hazır! Türkçe altyazı bağlantısı kuruldu.");
-            runOnUiThread(() -> status.setText(result));
+        if(!saveTvCredentials()) return;
+        final String ip=tvIp.getText().toString().trim();
+        final String pin=pairPin.getText().toString().trim();
+        tvStatus.setText("TV bağlantısı kontrol ediliyor…");
+        worker.execute(() -> {
+            String response=RelayClient.send(ip,pin,
+                "GlossaWhaleOS 2.1 hazır! Telefon ve TV bağlantısı kuruldu.");
+            runOnUiThread(() -> {
+                if(!isFinishing() && !isDestroyed()) {
+                    tvStatus.setText(response);
+                    status.setText(response);
+                }
+            });
         });
-    }
-    private void openRemotePlay() {
-        try {
-            Intent launch=getPackageManager().getLaunchIntentForPackage("com.playstation.remoteplay");
-            if(launch!=null) { startActivity(launch); return; }
-            Intent web=new Intent(Intent.ACTION_VIEW, Uri.parse("https://play.google.com/store/apps/details?id=com.playstation.remoteplay"));
-            startActivity(web);
-            status.setText("PS Remote Play kurulum sayfası açıldı.");
-        } catch(Exception error) {
-            status.setText("PS Remote Play uygulamasını elle aç.");
-        }
     }
 }
