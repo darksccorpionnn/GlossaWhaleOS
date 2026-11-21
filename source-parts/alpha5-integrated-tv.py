@@ -673,30 +673,31 @@ replace_once(
                                 if(value in 32..126 || value == 10 || value == 13 || value == 9) {
                                     run.append(value.toChar())
                                 } else {
-                                    if(run.length >= 4) readable.append(run).append('\\\\n')
+                                    if(run.length >= 4) readable.append(run).append(10.toChar())
                                     run.setLength(0)
                                 }
                             }
-                            if(run.length >= 4) readable.append(run).append('\\\\n')
+                            if(run.length >= 4) readable.append(run).append(10.toChar())
                             tombstoneText = "Native tombstone bytes: " + bytes.size +
-                                "\\\\nReadable native trace strings:\\\\n" +
+                                10.toChar() + "Readable native trace strings:" + 10.toChar() +
                                 readable.toString().takeLast(12000)
                         }
                     } catch(traceError: Exception) {
                         tombstoneText = "Native tombstone read failed: " + traceError.toString()
                     }
                 }
+                val nl = 10.toChar()
                 val reportText =
-                    "Android process exit report" +
-                    "\\\\nReason code: " + info.reason +
-                    "\\\\nDescription: " + (info.description?.toString() ?: "(none)") +
-                    "\\\\nStatus/signal: " + info.status + " / " + signalName +
-                    "\\\\nImportance: " + info.importance +
-                    "\\\\nPSS/RSS kB: " + info.pss + " / " + info.rss +
-                    "\\\\nProcess: " + info.processName +
-                    "\\\\nTime: " + java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.US)
-                        .format(java.util.Date(info.timestamp)) +
-                    "\\\\n\\\\n" + tombstoneText
+                    "Android process exit report" + nl +
+                    "Reason code: " + info.reason + nl +
+                    "Description: " + (info.description?.toString() ?: "(none)") + nl +
+                    "Status/signal: " + info.status + " / " + signalName + nl +
+                    "Importance: " + info.importance + nl +
+                    "PSS/RSS kB: " + info.pss + " / " + info.rss + nl +
+                    "Process: " + info.processName + nl +
+                    "Time: " + java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.US)
+                        .format(java.util.Date(info.timestamp)) + nl + nl +
+                    tombstoneText
                 previousExitDiagnostic = reportText
                 try {
                     val logDir = java.io.File(filesDir, "session_logs")
