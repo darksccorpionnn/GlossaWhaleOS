@@ -11,6 +11,7 @@ on:
       - 'source-parts/alpha5-integrated-tv.py'
       - 'source-parts/alpha8-audio-safety.py'
       - 'source-parts/alpha9-video-only-audio-bypass.py'
+      - 'source-parts/alpha10-video-safety.py'
       - '.github/workflows/build.yml'
 
 jobs:
@@ -73,6 +74,9 @@ jobs:
       - name: Bypass Opus decoding for video-only OCR (Alpha 9)
         run: python3 source-parts/alpha9-video-only-audio-bypass.py
 
+      - name: Apply native video decoder lifecycle safety and report readability (Alpha 10)
+        run: python3 source-parts/alpha10-video-safety.py
+
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -101,30 +105,30 @@ jobs:
           gradle-version: '8.11.1'
           arguments: -p remote/chiaki-ng-androidtv --no-daemon :app:assembleDebug
 
-      - name: Validate Alpha 9 APK identity and native library
+      - name: Validate Alpha 10 APK identity and native library
         shell: bash
         run: |
           APK=remote/chiaki-ng-androidtv/app/build/outputs/apk/debug/app-debug.apk
           test -s "$APK"
-          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK" | grep -E "^package: name='com.darkscorpion.glossawhale.tv' versionCode='50'"
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK" | grep -E "^package: name='com.darkscorpion.glossawhale.tv' versionCode='51'"
           unzip -l "$APK" | grep 'lib/arm64-v8a/libchiaki-jni.so' >/dev/null
 
       - name: Prepare direct TV test APK
         run: |
           mkdir -p dist
-          cp remote/chiaki-ng-androidtv/app/build/outputs/apk/debug/app-debug.apk dist/GlossaWhaleOS-TV-alpha9.apk
+          cp remote/chiaki-ng-androidtv/app/build/outputs/apk/debug/app-debug.apk dist/GlossaWhaleOS-TV-alpha10.apk
 
       - name: Upload Alpha 9 TV APK separately
         uses: actions/upload-artifact@v4
         with:
-          name: GlossaWhaleOS-TV-alpha9
-          path: dist/GlossaWhaleOS-TV-alpha9.apk
+          name: GlossaWhaleOS-TV-alpha10
+          path: dist/GlossaWhaleOS-TV-alpha10.apk
           if-no-files-found: error
 
       - name: Upload all debug APKs
         uses: actions/upload-artifact@v4
         with:
-          name: GlossaWhaleOS-alpha9-video-only-debug-apks
+          name: GlossaWhaleOS-alpha10-video-safety-debug-apks
           path: |
             GlossaWhaleOS/phone/build/outputs/apk/debug/*.apk
             GlossaWhaleOS/tv/build/outputs/apk/debug/*.apk
