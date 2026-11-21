@@ -176,10 +176,21 @@ public final class PhoneActivity extends Activity {
                     String picked=result.tvAddresses.contains(oldIp)?oldIp:result.tvAddresses.get(0);
                     tvIp.setText(picked);
                     prefs.edit().putString("tv_ip",picked).apply();
-                    tvStatus.setText("✓  TV bulundu: "+picked+
-                        (pairPin.getText().toString().matches("[0-9]{6}")
-                        ?" • Kod kayıtlı, test gönderebilirsin."
-                        :" • Bağlanmak için TV'deki kodu bir kez gir."));
+                    final String pin=pairPin.getText().toString().trim();
+                    if(pin.matches("[0-9]{6}")) {
+                        tvStatus.setText("TV bulundu: "+picked+" • Otomatik bağlantı doğrulanıyor…");
+                        worker.execute(() -> {
+                            String state=RelayClient.ping(picked,pin);
+                            runOnUiThread(() -> {
+                                if(!isFinishing() && !isDestroyed() &&
+                                        picked.equals(tvIp.getText().toString().trim()))
+                                    tvStatus.setText(state+"\nIP: "+picked);
+                            });
+                        });
+                    } else {
+                        tvStatus.setText("✓  TV bulundu: "+picked+
+                            " • Bağlanmak için TV'deki kodu bir kez gir.");
+                    }
                 }
                 if(!result.error.isEmpty()) status.setText(result.error);
             });

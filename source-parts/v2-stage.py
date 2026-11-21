@@ -34,7 +34,7 @@ for module in ("phone", "tv"):
     # Keep the existing Gradle plugin resolution proven in the previous builds.
     gradle_path = app / "build.gradle.kts"
     gradle = gradle_path.read_text()
-    new_id = f"com.darkscorpion.glossawhale.{module}.v2"
+    new_id = f"com.darkscorpion.glossawhale.{module}.v21"
     gradle, n_id = re.subn(
         r'applicationId\s*=\s*"[^"]+"',
         f'applicationId = "{new_id}"', gradle, count=1

@@ -53,8 +53,8 @@ jobs:
           cp GlossaWhaleOS/phone/build/outputs/apk/debug/phone-debug.apk dist/GlossaWhaleOS-2.1-Telefon-otomatik-kesif.apk
           cp GlossaWhaleOS/tv/build/outputs/apk/debug/tv-debug.apk dist/GlossaWhaleOS-2.1-TV-otomatik-kesif.apk
           aapt="$ANDROID_HOME/build-tools/35.0.0/aapt"
-          "$aapt" dump badging dist/GlossaWhaleOS-2.1-Telefon-otomatik-kesif.apk | grep "name='com.darkscorpion.glossawhale.phone.v2'"
-          "$aapt" dump badging dist/GlossaWhaleOS-2.1-TV-otomatik-kesif.apk | grep "name='com.darkscorpion.glossawhale.tv.v2'"
+          "$aapt" dump badging dist/GlossaWhaleOS-2.1-Telefon-otomatik-kesif.apk | grep "name='com.darkscorpion.glossawhale.phone.v21'"
+          "$aapt" dump badging dist/GlossaWhaleOS-2.1-TV-otomatik-kesif.apk | grep "name='com.darkscorpion.glossawhale.tv.v21'"
           sha256sum dist/*.apk
 
       - name: Upload phone and TV APKs

@@ -135,21 +135,28 @@ public final class SubtitleReceiverService extends Service {
         BufferedInputStream input=new BufferedInputStream(client.getInputStream());
         String request=readLine(input,1024);
         String[] fields=request.split(" ");
-        if(fields.length<2 || !"POST".equals(fields[0])) {
-            respond(client,405,"POST gerekli");
+        if(fields.length<2) {
+            respond(client,400,"Gecersiz istek");
             return;
         }
         String route=fields[1];
-        if(!route.startsWith("/subtitle?pin=")) {
+        boolean health="GET".equals(fields[0]) && route.startsWith("/health?pin=");
+        boolean subtitle="POST".equals(fields[0]) && route.startsWith("/subtitle?pin=");
+        if(!health && !subtitle) {
             respond(client,404,"Yol bulunamadi");
             return;
         }
-        String candidatePin=route.substring("/subtitle?pin=".length());
+        String candidatePin=route.substring(
+            health ? "/health?pin=".length() : "/subtitle?pin=".length());
         if(!pin.matches("[0-9]{6}") || !MessageDigest.isEqual(
                 pin.getBytes(StandardCharsets.US_ASCII),
                 candidatePin.getBytes(StandardCharsets.US_ASCII))) {
             try {Thread.sleep(300);}catch(InterruptedException ignored){}
             respond(client,403,"Eslesme kodu yanlis");
+            return;
+        }
+        if(health) {
+            respond(client,200,"GLOSSA_READY");
             return;
         }
         int contentLength=-1;
