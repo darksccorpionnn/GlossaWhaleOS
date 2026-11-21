@@ -30,7 +30,7 @@ replace_once(
 replace_once(
     "app/build.gradle",
     'versionCode 38\n\t\tversionName "1.28.1-tv"',
-    'versionCode 46\n\t\tversionName "1.28.1-glossawhale-alpha6"'
+    'versionCode 47\n\t\tversionName "1.28.1-glossawhale-alpha6"'
 )
 replace_once(
     "app/build.gradle",
@@ -748,7 +748,7 @@ private fun decodeGlossaTombstone(raw: ByteArray): String
         if(path.isNotBlank())
             out.append("fd ").append(number).append(": ").append(path).append(10.toChar())
     }
-    out.toString()
+    return out.toString()
 }
 
 class MainActivity: ComponentActivity()"""
