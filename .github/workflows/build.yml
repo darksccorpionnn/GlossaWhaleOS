@@ -10,6 +10,7 @@ on:
       - 'source-parts/alpha4-tv-from-alpha2.patch.gz.b64.part01'
       - 'source-parts/alpha5-integrated-tv.py'
       - 'source-parts/alpha8-audio-safety.py'
+      - 'source-parts/alpha9-video-only-audio-bypass.py'
       - '.github/workflows/build.yml'
 
 jobs:
@@ -69,6 +70,9 @@ jobs:
       - name: Apply serialized MediaCodec audio safety fix
         run: python3 source-parts/alpha8-audio-safety.py
 
+      - name: Bypass Opus decoding for video-only OCR (Alpha 9)
+        run: python3 source-parts/alpha9-video-only-audio-bypass.py
+
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -97,10 +101,18 @@ jobs:
           gradle-version: '8.11.1'
           arguments: -p remote/chiaki-ng-androidtv --no-daemon :app:assembleDebug
 
+      - name: Validate Alpha 9 APK identity and native library
+        shell: bash
+        run: |
+          APK=remote/chiaki-ng-androidtv/app/build/outputs/apk/debug/app-debug.apk
+          test -s "$APK"
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK" | grep -E "^package: name='com.darkscorpion.glossawhale.tv' versionCode='50'"
+          unzip -l "$APK" | grep -q 'lib/arm64-v8a/libchiaki-jni.so'
+
       - name: Upload all debug APKs
         uses: actions/upload-artifact@v4
         with:
-          name: GlossaWhaleOS-alpha8-audio-fix-debug-apks
+          name: GlossaWhaleOS-alpha9-video-only-debug-apks
           path: |
             GlossaWhaleOS/phone/build/outputs/apk/debug/*.apk
             GlossaWhaleOS/tv/build/outputs/apk/debug/*.apk
