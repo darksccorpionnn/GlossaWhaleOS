@@ -683,6 +683,28 @@ replace_once(
                             else crash + "\\n\\n" + exit
                         }"""
 )
+
+# Make the report dialog explicitly dismissible in Compose state. This avoids
+# relying on a non-observable Activity property to control dialog visibility.
+replace_once(
+    "app/src/main/java/com/chiaking/tv/MainActivity.kt",
+    """                        if (previousCrashText.isNotBlank()) {""",
+    """                        val reportVisible = androidx.compose.runtime.remember {
+                            androidx.compose.runtime.mutableStateOf(previousCrashText.isNotBlank())
+                        }
+                        if (reportVisible.value) {"""
+)
+replace_once(
+    "app/src/main/java/com/chiaking/tv/MainActivity.kt",
+    """                                onDismissRequest = { },""",
+    """                                onDismissRequest = { reportVisible.value = false },"""
+)
+replace_once(
+    "app/src/main/java/com/chiaking/tv/MainActivity.kt",
+    """                                        previousCrashState.value = null""",
+    """                                        previousCrashState.value = null
+                                        reportVisible.value = false"""
+)
 replace_once(
     "app/src/main/java/com/chiaking/tv/session/StreamSession.kt",
     """\t\t\tis QuitEvent ->
