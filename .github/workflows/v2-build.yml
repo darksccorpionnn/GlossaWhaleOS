@@ -1,4 +1,4 @@
-name: GlossaWhaleOS 2.0 - Phone and TV
+name: GlossaWhaleOS 2.1 - Automatic PS4 and TV discovery
 
 on:
   push:
@@ -50,16 +50,16 @@ jobs:
         run: |
           set -e
           mkdir -p dist
-          cp GlossaWhaleOS/phone/build/outputs/apk/debug/phone-debug.apk dist/GlossaWhaleOS-2-Telefon-alpha1.apk
-          cp GlossaWhaleOS/tv/build/outputs/apk/debug/tv-debug.apk dist/GlossaWhaleOS-2-TV-alpha1.apk
+          cp GlossaWhaleOS/phone/build/outputs/apk/debug/phone-debug.apk dist/GlossaWhaleOS-2.1-Telefon-otomatik-kesif.apk
+          cp GlossaWhaleOS/tv/build/outputs/apk/debug/tv-debug.apk dist/GlossaWhaleOS-2.1-TV-otomatik-kesif.apk
           aapt="$ANDROID_HOME/build-tools/35.0.0/aapt"
-          "$aapt" dump badging dist/GlossaWhaleOS-2-Telefon-alpha1.apk | grep "name='com.darkscorpion.glossawhale.phone.v2'"
-          "$aapt" dump badging dist/GlossaWhaleOS-2-TV-alpha1.apk | grep "name='com.darkscorpion.glossawhale.tv.v2'"
+          "$aapt" dump badging dist/GlossaWhaleOS-2.1-Telefon-otomatik-kesif.apk | grep "name='com.darkscorpion.glossawhale.phone.v2'"
+          "$aapt" dump badging dist/GlossaWhaleOS-2.1-TV-otomatik-kesif.apk | grep "name='com.darkscorpion.glossawhale.tv.v2'"
           sha256sum dist/*.apk
 
       - name: Upload phone and TV APKs
         uses: actions/upload-artifact@v4
         with:
-          name: GlossaWhaleOS-2-alpha1-two-apps
+          name: GlossaWhaleOS-2.1-auto-discovery
           path: dist/*.apk
           if-no-files-found: error

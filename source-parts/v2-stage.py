@@ -42,9 +42,9 @@ for module in ("phone", "tv"):
     if n_id != 1:
         raise SystemExit(f"{module}: expected one applicationId")
     gradle, n_version = re.subn(r'versionCode\s*=\s*\d+',
-        'versionCode = 200', gradle, count=1)
+        'versionCode = 210', gradle, count=1)
     gradle, n_name = re.subn(r'versionName\s*=\s*"[^"]+"',
-        'versionName = "2.0.0-alpha1"', gradle, count=1)
+        'versionName = "2.1.0-alpha2"', gradle, count=1)
     if n_version != 1 or n_name != 1:
         raise SystemExit(f"{module}: Gradle version values not found")
     gradle, n_target = re.subn(r'targetSdk\s*=\s*\d+',
@@ -73,6 +73,8 @@ phone_manifest = r'''<?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
@@ -80,7 +82,7 @@ phone_manifest = r'''<?xml version="1.0" encoding="utf-8"?>
         <package android:name="com.playstation.remoteplay" />
     </queries>
     <application
-        android:label="GlossaWhaleOS 2 Telefon"
+        android:label="GlossaWhaleOS 2.1 Telefon"
         android:theme="@android:style/Theme.Material.NoActionBar"
         android:usesCleartextTraffic="true"
         android:allowBackup="false"
@@ -111,7 +113,7 @@ tv_manifest = r'''<?xml version="1.0" encoding="utf-8"?>
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <application
-        android:label="GlossaWhaleOS 2 TV"
+        android:label="GlossaWhaleOS 2.1 TV"
         android:theme="@android:style/Theme.Material.NoActionBar"
         android:usesCleartextTraffic="true"
         android:allowBackup="false"
@@ -140,4 +142,4 @@ tv_manifest = r'''<?xml version="1.0" encoding="utf-8"?>
 
 (PROJECT / "phone/src/main/AndroidManifest.xml").write_text(phone_manifest, encoding="utf-8")
 (PROJECT / "tv/src/main/AndroidManifest.xml").write_text(tv_manifest, encoding="utf-8")
-print("GlossaWhaleOS 2.0: fresh phone and TV source installed; no legacy native decoder")
+print("GlossaWhaleOS 2.1: fresh phone and TV source installed; no legacy native decoder")

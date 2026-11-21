@@ -21,10 +21,13 @@ public final class SubtitleReceiverService extends Service {
     static final String STATUS="com.darkscorpion.glossawhale.v2.tv.STATUS";
     private static final String CHANNEL="glossa_v2_tv";
     private static final int PORT=8799;
+    private static final int DISCOVERY_PORT=8798;
 
     private final Handler main=new Handler(Looper.getMainLooper());
     private ServerSocket server;
     private Thread listener;
+    private Thread discoveryListener;
+    private DatagramSocket discoverySocket;
     private WindowManager windowManager;
     private LinearLayout bubbleContainer;
     private TextView bubbleText;
@@ -37,7 +40,7 @@ public final class SubtitleReceiverService extends Service {
         pin=getSharedPreferences("glossa_v2_tv",MODE_PRIVATE).getString("pin","");
         if(!alive) startServer();
         if(intent!=null && TEST.equals(intent.getAction()))
-            showSubtitle("GlossaWhaleOS 2.0 hazır! Türkçe altyazı sistemi etkin.",6000);
+            showSubtitle("GlossaWhaleOS 2.1 hazır! Türkçe altyazı sistemi etkin.",6000);
         return START_STICKY;
     }
 
@@ -51,7 +54,7 @@ public final class SubtitleReceiverService extends Service {
         Notification.Builder nb=Build.VERSION.SDK_INT>=26
             ? new Notification.Builder(this,CHANNEL) : new Notification.Builder(this);
         Notification notification=nb.setSmallIcon(android.R.drawable.ic_menu_view)
-            .setContentTitle("GlossaWhaleOS 2.0 TV")
+            .setContentTitle("GlossaWhaleOS 2.1 TV")
             .setContentText("Türkçe altyazı bağlantısı açık • Wi-Fi")
             .setOngoing(true).build();
         if(Build.VERSION.SDK_INT>=29)
@@ -80,6 +83,37 @@ public final class SubtitleReceiverService extends Service {
             } finally { alive=false; }
         },"Glossa-TV-LAN");
         listener.start();
+        startDiscoveryResponder();
+    }
+
+
+    /** Announces the TV on local Wi-Fi without revealing its six-digit pairing PIN. */
+    private void startDiscoveryResponder() {
+        discoveryListener=new Thread(() -> {
+            try(DatagramSocket socket=new DatagramSocket(DISCOVERY_PORT)) {
+                discoverySocket=socket;
+                socket.setSoTimeout(1200);
+                byte[] response=("GLOSSA_TV_DISCOVERY_RESPONSE v1\\nport:8799\\n").getBytes(StandardCharsets.US_ASCII);
+                while(alive) {
+                    byte[] buffer=new byte[256];
+                    DatagramPacket request=new DatagramPacket(buffer,buffer.length);
+                    try {socket.receive(request);}
+                    catch(SocketTimeoutException timeout) {continue;}
+                    InetAddress source=request.getAddress();
+                    if(source==null || !source.isSiteLocalAddress()) continue;
+                    String message=new String(request.getData(),request.getOffset(),
+                        request.getLength(),StandardCharsets.US_ASCII);
+                    if(!"GLOSSA_TV_DISCOVERY v1\n".equals(message)) continue;
+                    socket.send(new DatagramPacket(response,response.length,source,
+                        request.getPort()));
+                }
+            } catch(SocketException stop) {
+                if(alive) report("TV otomatik keşif portu kullanılamıyor");
+            } catch(Exception error) {
+                if(alive) report("TV keşif servisi hatası: "+error.getClass().getSimpleName());
+            } finally { discoverySocket=null; }
+        },"Glossa-TV-Discovery");
+        discoveryListener.start();
     }
 
     private static String readLine(InputStream in,int max) throws IOException {
@@ -214,6 +248,7 @@ public final class SubtitleReceiverService extends Service {
     @Override public void onDestroy() {
         alive=false;
         if(server!=null) {try {server.close();}catch(IOException ignored){}}
+        if(discoverySocket!=null) discoverySocket.close();
         main.post(() -> {
             if(clearTask!=null)main.removeCallbacks(clearTask);
             if(bubbleContainer!=null && windowManager!=null) {

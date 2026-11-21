@@ -24,6 +24,8 @@ public final class TvActivity extends Activity {
     private TextView pinView;
     private String pin;
     private boolean receiverRegistered=false;
+    private boolean manualStopped=false;
+    private boolean autoStarted=false;
     private final BroadcastReceiver events=new BroadcastReceiver() {
         @Override public void onReceive(Context c,Intent intent) {
             if(statusView!=null) {
@@ -55,7 +57,7 @@ public final class TvActivity extends Activity {
         GlossaUI.add(branding,GlossaUI.text(this,"DARK SCORPION  /  GLOSSA LAB",13,GlossaUI.TEAL,true));
         GlossaUI.gap(branding,this,10);
         GlossaUI.add(branding,GlossaUI.text(this,"GlossaWhaleOS",38,GlossaUI.WHITE,true));
-        GlossaUI.add(branding,GlossaUI.text(this,"TV STUDIO  ·  V2.0",16,GlossaUI.MUTED,false));
+        GlossaUI.add(branding,GlossaUI.text(this,"TV STUDIO  ·  V2.1",16,GlossaUI.MUTED,false));
         top.addView(branding,new LinearLayout.LayoutParams(0,ViewGroup.LayoutParams.WRAP_CONTENT,1));
         TextView ready=GlossaUI.text(this,"●  HAFİF TV UYGULAMASI",14,GlossaUI.TEAL,true);
         ready.setBackground(GlossaUI.solid(0xFF173E47,15,this));
@@ -76,7 +78,7 @@ public final class TvActivity extends Activity {
 
         LinearLayout two=GlossaUI.row(this);
         LinearLayout connection=GlossaUI.card(this,"01  ·  Telefon eşleştirme",
-            "Telefon uygulamasına aşağıdaki yerel ağ bilgilerini gir.");
+            "Telefon uygulaması IP adresini otomatik bulur. İlk bağlantıda yalnızca aşağıdaki 6 haneli kodu telefonuna gir.");
         ipView=GlossaUI.text(this,findLanAddress(),28,GlossaUI.WHITE,true);
         GlossaUI.add(connection,GlossaUI.text(this,"TV IP ADRESİ",12,GlossaUI.MUTED,true));
         GlossaUI.gap(connection,this,5);
@@ -93,7 +95,7 @@ public final class TvActivity extends Activity {
         LinearLayout controls=GlossaUI.card(this,"02  ·  HDMI altyazı sistemi",
             "Şeffaf altyazı katmanını etkinleştir, ardından kumandayla HDMI girişine dönebilirsin.");
         TextView enable=GlossaUI.button(this,"▶   Alıcı ve şeffaf katmanı başlat",true);
-        enable.setOnClickListener(v -> startReceiver());
+        enable.setOnClickListener(v -> {manualStopped=false;startReceiver();});
         controls.addView(enable,GlossaUI.spaced(this,11));
         TextView hdmi=GlossaUI.button(this,"HDMI'yi uygulama içinde açmayı dene",false);
         hdmi.setOnClickListener(v -> startActivity(new Intent(this,HdmiActivity.class)));
@@ -104,6 +106,8 @@ public final class TvActivity extends Activity {
         controls.addView(demo,GlossaUI.spaced(this,11));
         TextView stop=GlossaUI.button(this,"■   Alıcıyı durdur",false);
         stop.setOnClickListener(v -> {
+            manualStopped=true;
+            autoStarted=false;
             stopService(new Intent(this,SubtitleReceiverService.class));
             statusView.setText("Alıcı durduruldu");
         });
@@ -113,7 +117,7 @@ public final class TvActivity extends Activity {
         root.addView(two,GlossaUI.spaced(this,20));
 
         LinearLayout foot=GlossaUI.card(this,"03  ·  Sistem durumu",
-            "TV yalnızca eşleştirilen telefondan gelen Türkçe altyazıyı alır. PS4 fiziksel HDMI kablosuyla bağlı kalır; TV üzerinde Remote Play/Chiaki çalıştırılmaz.");
+            "Alıcı ve ağda görünürlük uygulama açılınca otomatik başlar. TV kodu keşif paketlerinde paylaşılmaz. PS4 HDMI kablosuyla bağlı kalır.");
         permissionView=GlossaUI.text(this,"İzin kontrol ediliyor…",15,GlossaUI.TEAL,true);
         GlossaUI.add(foot,permissionView);
         GlossaUI.gap(foot,this,11);
@@ -139,7 +143,8 @@ public final class TvActivity extends Activity {
         Intent intent=new Intent(this,SubtitleReceiverService.class);
         intent.setAction(SubtitleReceiverService.START);
         if(Build.VERSION.SDK_INT>=26) startForegroundService(intent); else startService(intent);
-        statusView.setText("Alıcı başlatılıyor · TCP 8799");
+        autoStarted=true;
+        statusView.setText("Alıcı ve otomatik keşif başlatılıyor · TCP 8799 / UDP 8798");
     }
 
     @Override protected void onResume() {
@@ -150,6 +155,8 @@ public final class TvActivity extends Activity {
                 "⚠  Ekran üzerine yazı izni gerekiyor");
         }
         if(ipView!=null) ipView.setText(findLanAddress());
+        if(!manualStopped && !autoStarted &&
+            (Build.VERSION.SDK_INT<23 || Settings.canDrawOverlays(this))) startReceiver();
         if(!receiverRegistered) {
             registerReceiver(events,new IntentFilter(SubtitleReceiverService.STATUS));
             receiverRegistered=true;
