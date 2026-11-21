@@ -30,7 +30,7 @@ replace_once(
 replace_once(
     "app/build.gradle",
     'versionCode 38\n\t\tversionName "1.28.1-tv"',
-    'versionCode 42\n\t\tversionName "1.28.1-glossawhale-alpha4"'
+    'versionCode 43\n\t\tversionName "1.28.1-glossawhale-alpha5"'
 )
 replace_once(
     "app/build.gradle",
@@ -651,16 +651,62 @@ replace_once(
                 .firstOrNull { it.timestamp > lastSeen }
             if(info != null)
             {
-                previousExitDiagnostic =
+                val signalName = when(info.status) {
+                    4 -> "SIGILL (illegal instruction)"
+                    5 -> "SIGTRAP (trace trap)"
+                    6 -> "SIGABRT (abort)"
+                    7 -> "SIGBUS (bus error)"
+                    11 -> "SIGSEGV (invalid memory access)"
+                    else -> "signal/status " + info.status
+                }
+                var tombstoneText = "Native tombstone: not available"
+                if(android.os.Build.VERSION.SDK_INT >= 31 &&
+                    info.reason == android.app.ApplicationExitInfo.REASON_CRASH_NATIVE)
+                {
+                    try {
+                        info.traceInputStream?.use { stream ->
+                            val bytes = stream.readBytes().take(2 * 1024 * 1024).toByteArray()
+                            val readable = StringBuilder()
+                            val run = StringBuilder()
+                            for(byteValue in bytes) {
+                                val value = byteValue.toInt() and 0xff
+                                if(value in 32..126 || value == 10 || value == 13 || value == 9) {
+                                    run.append(value.toChar())
+                                } else {
+                                    if(run.length >= 4) readable.append(run).append('\\\\n')
+                                    run.setLength(0)
+                                }
+                            }
+                            if(run.length >= 4) readable.append(run).append('\\\\n')
+                            tombstoneText = "Native tombstone bytes: " + bytes.size +
+                                "\\\\nReadable native trace strings:\\\\n" +
+                                readable.toString().takeLast(12000)
+                        }
+                    } catch(traceError: Exception) {
+                        tombstoneText = "Native tombstone read failed: " + traceError.toString()
+                    }
+                }
+                val reportText =
                     "Android process exit report" +
-                    "\\nReason code: " + info.reason +
-                    "\\nDescription: " + (info.description?.toString() ?: "(none)") +
-                    "\\nStatus: " + info.status +
-                    "\\nImportance: " + info.importance +
-                    "\\nProcess: " + info.processName +
-                    "\\nTime: " + java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.US)
+                    "\\\\nReason code: " + info.reason +
+                    "\\\\nDescription: " + (info.description?.toString() ?: "(none)") +
+                    "\\\\nStatus/signal: " + info.status + " / " + signalName +
+                    "\\\\nImportance: " + info.importance +
+                    "\\\\nPSS/RSS kB: " + info.pss + " / " + info.rss +
+                    "\\\\nProcess: " + info.processName +
+                    "\\\\nTime: " + java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.US)
                         .format(java.util.Date(info.timestamp)) +
-                    "\\n\\nVerbose Chiaki session logs are enabled. Open Settings → Logs."
+                    "\\\\n\\\\n" + tombstoneText
+                previousExitDiagnostic = reportText
+                try {
+                    val logDir = java.io.File(filesDir, "session_logs")
+                    logDir.mkdirs()
+                    val stamp = java.text.SimpleDateFormat("yyyy-MM-dd_HH-mm-ss-SSS", java.util.Locale.US)
+                        .format(java.util.Date(info.timestamp))
+                    java.io.File(logDir, "chiaki_session_" + stamp + "_native-crash.log").writeText(reportText)
+                } catch(logError: Exception) {
+                    android.util.Log.e("GlossaWhaleOS", "Could not save native crash report", logError)
+                }
                 store.edit().putLong("last_seen_exit_timestamp", info.timestamp).apply()
             }
         }
