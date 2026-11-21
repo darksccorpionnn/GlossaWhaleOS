@@ -1,4 +1,4 @@
-name: GlossaWhaleOS 4.0 Unified Theme and Improved Offline Translation
+name: GlossaWhaleOS 4.2 Complete Unified PS4 Account Discovery and Remote Play
 
 on:
   push:
@@ -36,14 +36,14 @@ jobs:
         run: |
           set -e
           aapt="$ANDROID_HOME/build-tools/35.0.0/aapt"
-          "$aapt" dump badging dist-remote/GlossaWhaleOS-4.0.1-PSN-Hesap-Ekleme-Telefon.apk |
-            grep "name='com.darkscorpion.glossawhale.unifiedv4'"
-          unzip -l dist-remote/GlossaWhaleOS-4.0.1-PSN-Hesap-Ekleme-Telefon.apk | grep '\.so$' | head
+          "$aapt" dump badging dist-remote/GlossaWhaleOS-4.2-Tam-Birlesik-PS4-Telefon.apk |
+            grep "name='com.darkscorpion.glossawhale.unifiedv42'"
+          unzip -l dist-remote/GlossaWhaleOS-4.2-Tam-Birlesik-PS4-Telefon.apk | grep '\.so$' | head
           unzip -l dist-remote/*.apk | grep 'classes.dex' | head -1
           sha256sum dist-remote/*.apk
       - name: Upload integrated PS4 translator phone APK with open-source notices
         uses: actions/upload-artifact@v4
         with:
-          name: GlossaWhaleOS-4.0-Phone-One-App-Themes-Offline-Quality
+          name: GlossaWhaleOS-4.2-Phone-Unified-PS4
           path: dist-remote/*
           if-no-files-found: error
