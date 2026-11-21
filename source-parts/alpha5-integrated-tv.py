@@ -519,19 +519,20 @@ replace_once(
     """                        Navigation()
                         ImportSettingsDialog(settingsTransfer)
                         val crashFile = java.io.File(filesDir, "glossa-last-crash.txt")
-                        var previousCrash by androidx.compose.runtime.remember {
+                        val previousCrashState = androidx.compose.runtime.remember {
                             androidx.compose.runtime.mutableStateOf(
                                 try { crashFile.takeIf { it.exists() }?.readText() } catch (_: Exception) { null }
                             )
                         }
-                        if (!previousCrash.isNullOrBlank()) {
+                        val previousCrashText = previousCrashState.value.orEmpty()
+                        if (previousCrashText.isNotBlank()) {
                             androidx.compose.material3.AlertDialog(
                                 onDismissRequest = { },
                                 title = { androidx.compose.material3.Text("Önceki oturumda uygulama çöktü") },
                                 text = {
                                     androidx.compose.foundation.layout.Column {
                                         androidx.compose.material3.Text(
-                                            previousCrash!!.takeLast(3500),
+                                            previousCrashText.takeLast(3500),
                                             maxLines = 18
                                         )
                                     }
@@ -539,7 +540,7 @@ replace_once(
                                 confirmButton = {
                                     androidx.compose.material3.TextButton(onClick = {
                                         try { crashFile.delete() } catch (_: Exception) {}
-                                        previousCrash = null
+                                        previousCrashState.value = null
                                     }) { androidx.compose.material3.Text("Kaydı kapat") }
                                 }
                             )
