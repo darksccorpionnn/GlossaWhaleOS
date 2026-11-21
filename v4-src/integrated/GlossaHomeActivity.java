@@ -13,8 +13,8 @@ import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
-import com.metallic.chiaki.main.MainActivity;
-import com.metallic.chiaki.regist.RegistActivity;
+
+
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -81,8 +81,8 @@ public final class GlossaHomeActivity extends Activity {
         add(statusCard,lastState,0);
         add(root,statusCard,17);
 
-        TextView start=theme.button(this,"▶  PS4'e bağlan ve oyunu aç",true);
-        start.setOnClickListener(v->startActivity(new Intent(this,MainActivity.class)));
+        TextView start=theme.button(this,"▶  PS4 konsollarım • Uzaktan oyna",true);
+        start.setOnClickListener(v->startActivity(new Intent(this,GlossaConsolesActivity.class)));
         add(root,start,12);
 
         LinearLayout tools=card("Çeviri stüdyosu",
@@ -96,13 +96,13 @@ public final class GlossaHomeActivity extends Activity {
         TextView psn=theme.button(this,"♙  PSN Hesabım / Account ID Al",true);
         psn.setOnClickListener(v->startActivity(new Intent(this,PsnAccountActivity.class)));
         add(tools,psn,11);
-        TextView register=theme.button(this,"＋  PS4'e yeni hesap eşleştir",false);
-        register.setOnClickListener(v->startActivity(new Intent(this,RegistActivity.class)));
+        TextView register=theme.button(this,"＋  PS4 bul ve eşleştir",false);
+        register.setOnClickListener(v->startActivity(new Intent(this,GlossaConsolesActivity.class)));
         add(tools,register,0);
         add(root,tools,16);
 
         LinearLayout info=card("Nasıl çalışır?",
-            "1. İkinci PSN hesabını PS4'e eşleştir.\n"+
+            "1. PSN Hesabım bölümünden ikinci PSN hesabını ekle.\n"+
             "2. TV'nin IP ve 6 haneli kodunu OCR ayarlarında kaydet.\n"+
             "3. PS4'e bağlan; ekranda OCR kutusunu konumlandır.\n"+
             "4. Çeviri otomatik olarak TV'ye gönderilir.\n\n"+
