@@ -53,6 +53,19 @@ for activity in ('main.MainActivity','stream.StreamActivity',
     xml=xml.replace(old,'android:name="com.metallic.chiaki.'+activity+'"')
 manifest.write_text(xml)
 
+# CoordinatorLayout resolves relative app:layout_behavior names against the
+# applicationId, NOT against the Kotlin namespace. Qualify both behavior
+# classes in the original Chiaki layout to prevent startup InflateException.
+layout=Path('android/app/src/main/res/layout/activity_main.xml')
+layout_xml=layout.read_text()
+for behavior in ('FloatingActionButtonBackgroundBehavior',
+                 'FloatingActionButtonSpeedDialBehavior'):
+    old='app:layout_behavior=".main.'+behavior+'"'
+    assert layout_xml.count(old)==1, f'Missing relative behavior: {behavior}'
+    layout_xml=layout_xml.replace(old,
+        'app:layout_behavior="com.metallic.chiaki.main.'+behavior+'"')
+layout.write_text(layout_xml)
+
 strings=Path('android/app/src/main/res/values/strings.xml')
 st=strings.read_text()
 assert '<string name="app_name">Chiaki</string>' in st
