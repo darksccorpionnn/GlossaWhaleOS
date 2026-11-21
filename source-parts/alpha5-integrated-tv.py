@@ -30,7 +30,7 @@ replace_once(
 replace_once(
     "app/build.gradle",
     'versionCode 38\n\t\tversionName "1.28.1-tv"',
-    'versionCode 44\n\t\tversionName "1.28.1-glossawhale-alpha5"'
+    'versionCode 45\n\t\tversionName "1.28.1-glossawhale-alpha6"'
 )
 replace_once(
     "app/build.gradle",
@@ -544,8 +544,8 @@ replace_once(
                                 text = {
                                     androidx.compose.foundation.layout.Column {
                                         androidx.compose.material3.Text(
-                                            previousCrashText.takeLast(3500),
-                                            maxLines = 18
+                                            previousCrashText.take(5000),
+                                            maxLines = 28
                                         )
                                     }
                                 },
@@ -560,6 +560,199 @@ replace_once(
                         }"""
 )
 
+replace_once(
+    "app/src/main/java/com/chiaking/tv/MainActivity.kt",
+    "class MainActivity: ComponentActivity()",
+    """private data class GlossaWireField(
+    val number: Int,
+    val wireType: Int,
+    val varint: Long = 0L,
+    val payload: ByteArray? = null
+)
+
+private class GlossaWireReader(private val data: ByteArray)
+{
+    private var position = 0
+
+    private fun readVarint(): Long
+    {
+        var result = 0L
+        var shift = 0
+        while(position < data.size && shift < 64)
+        {
+            val value = data[position++].toInt() and 0xff
+            result = result or ((value and 0x7f).toLong() shl shift)
+            if((value and 0x80) == 0)
+                return result
+            shift += 7
+        }
+        throw IllegalArgumentException("Malformed protobuf varint")
+    }
+
+    fun readFields(): List<GlossaWireField>
+    {
+        val fields = ArrayList<GlossaWireField>()
+        while(position < data.size)
+        {
+            val tag = readVarint()
+            if(tag == 0L)
+                break
+            val number = (tag ushr 3).toInt()
+            val wire = (tag and 7L).toInt()
+            if(number == 0)
+                throw IllegalArgumentException("Invalid protobuf field number")
+            when(wire)
+            {
+                0 -> fields.add(GlossaWireField(number, wire, readVarint()))
+                1 -> {
+                    if(data.size - position < 8)
+                        throw IllegalArgumentException("Truncated protobuf fixed64")
+                    position += 8
+                    fields.add(GlossaWireField(number, wire))
+                }
+                2 -> {
+                    val sizeLong = readVarint()
+                    if(sizeLong < 0L || sizeLong > (data.size - position).toLong())
+                        throw IllegalArgumentException("Invalid protobuf field length")
+                    val size = sizeLong.toInt()
+                    val payload = data.copyOfRange(position, position + size)
+                    position += size
+                    fields.add(GlossaWireField(number, wire, payload = payload))
+                }
+                5 -> {
+                    if(data.size - position < 4)
+                        throw IllegalArgumentException("Truncated protobuf fixed32")
+                    position += 4
+                    fields.add(GlossaWireField(number, wire))
+                }
+                else -> throw IllegalArgumentException("Unsupported protobuf wire type " + wire)
+            }
+        }
+        return fields
+    }
+}
+
+private fun glossaText(field: GlossaWireField?): String =
+    field?.payload?.toString(Charsets.UTF_8) ?: ""
+
+private fun glossaHex(value: Long): String =
+    "0x" + java.lang.Long.toHexString(value)
+
+private fun decodeGlossaTombstone(raw: ByteArray): String
+{
+    val top = GlossaWireReader(raw).readFields()
+    fun first(number: Int) = top.firstOrNull { it.number == number }
+    fun text(number: Int) = glossaText(first(number))
+    fun nested(field: GlossaWireField) =
+        GlossaWireReader(field.payload ?: ByteArray(0)).readFields()
+
+    val out = StringBuilder()
+    val arch = first(1)?.varint ?: -1L
+    val archName = when(arch) {
+        0L -> "ARM32"
+        1L -> "ARM64"
+        2L -> "x86"
+        3L -> "x86_64"
+        4L -> "RISC-V 64"
+        5L -> "unknown"
+        else -> "unknown(" + arch + ")"
+    }
+    val crashingTid = first(6)?.varint?.toInt() ?: -1
+    out.append("Architecture: ").append(archName).append(10.toChar())
+    out.append("Build fingerprint: ").append(text(2)).append(10.toChar())
+    out.append("Tombstone time: ").append(text(4)).append(10.toChar())
+    out.append("PID/TID: ").append(first(5)?.varint ?: 0L)
+        .append("/").append(crashingTid).append(10.toChar())
+
+    first(10)?.let { signalField ->
+        val signal = nested(signalField)
+        fun sig(number: Int) = signal.firstOrNull { it.number == number }
+        out.append("Signal: ").append(glossaText(sig(2)))
+            .append(" (number ").append(sig(1)?.varint ?: 0L)
+            .append(", code ").append(sig(4)?.let { glossaText(it) } ?: (sig(3)?.varint?.toString() ?: "0"))
+            .append(")").append(10.toChar())
+        sig(9)?.let { out.append("Fault address: ").append(glossaHex(it.varint)).append(10.toChar()) }
+    }
+    if(text(14).isNotBlank())
+        out.append("Abort message: ").append(text(14)).append(10.toChar())
+    top.filter { it.number == 15 && it.payload != null }.forEach { causeField ->
+        val cause = nested(causeField)
+        cause.firstOrNull { it.number == 1 }?.let {
+            out.append("Crash cause: ").append(glossaText(it)).append(10.toChar())
+        }
+    }
+
+    val threads = ArrayList<Pair<Int, List<GlossaWireField>>>()
+    top.filter { it.number == 16 && it.payload != null }.forEach { entryField ->
+        val entry = nested(entryField)
+        val mapTid = entry.firstOrNull { it.number == 1 }?.varint?.toInt() ?: -1
+        val threadBytes = entry.firstOrNull { it.number == 2 }?.payload ?: return@forEach
+        val thread = GlossaWireReader(threadBytes).readFields()
+        val tid = thread.firstOrNull { it.number == 1 }?.varint?.toInt() ?: mapTid
+        threads.add(tid to thread)
+    }
+    val orderedThreads = threads.sortedBy { if(it.first == crashingTid) 0 else 1 }
+    out.append(10.toChar()).append("=== THREAD BACKTRACES ===").append(10.toChar())
+    if(orderedThreads.isEmpty())
+        out.append("No thread backtraces were present in the tombstone.").append(10.toChar())
+    orderedThreads.take(16).forEach { (tid, thread) ->
+        val name = glossaText(thread.firstOrNull { it.number == 2 })
+        out.append(10.toChar()).append("TID ").append(tid)
+            .append(if(tid == crashingTid) " [CRASHING THREAD]" else "")
+            .append("  name=").append(name).append(10.toChar())
+        thread.filter { it.number == 7 && it.payload != null }.forEach {
+            out.append("  note: ").append(glossaText(it)).append(10.toChar())
+        }
+        val frames = thread.filter { it.number == 4 && it.payload != null }
+        if(frames.isEmpty())
+            out.append("  (no symbolicated frames)").append(10.toChar())
+        frames.take(40).forEachIndexed { index, frameField ->
+            val frame = nested(frameField)
+            fun frameField(number: Int) = frame.firstOrNull { it.number == number }
+            val functionName = glossaText(frameField(4))
+            val fileName = glossaText(frameField(6))
+            val pc = frameField(2)?.varint
+            val offset = frameField(5)?.varint
+            out.append("  #").append(index).append(" ")
+            out.append(if(functionName.isNotBlank()) functionName else "<unknown>")
+            if(offset != null) out.append("+").append(glossaHex(offset))
+            if(pc != null) out.append("  pc ").append(glossaHex(pc))
+            if(fileName.isNotBlank()) out.append("  (").append(fileName).append(")")
+            frameField(8)?.let { buildId ->
+                val id = glossaText(buildId)
+                if(id.isNotBlank()) out.append("  build-id=").append(id)
+            }
+            out.append(10.toChar())
+        }
+    }
+
+    out.append(10.toChar()).append("=== EXECUTABLE MEMORY MAPPINGS ===").append(10.toChar())
+    top.filter { it.number == 17 && it.payload != null }.take(80).forEach { mappingField ->
+        val mapping = nested(mappingField)
+        fun mf(number: Int) = mapping.firstOrNull { it.number == number }
+        if(mf(6)?.varint == 1L) {
+            out.append(glossaHex(mf(1)?.varint ?: 0L)).append("-")
+                .append(glossaHex(mf(2)?.varint ?: 0L)).append(" ")
+                .append(glossaText(mf(7)))
+            val buildId = glossaText(mf(8))
+            if(buildId.isNotBlank()) out.append(" build-id=").append(buildId)
+            out.append(10.toChar())
+        }
+    }
+
+    out.append(10.toChar()).append("=== OPEN FILE DESCRIPTORS (context only) ===").append(10.toChar())
+    top.filter { it.number == 19 && it.payload != null }.take(32).forEach { fdField ->
+        val fd = nested(fdField)
+        val number = fd.firstOrNull { it.number == 1 }?.varint ?: -1L
+        val path = glossaText(fd.firstOrNull { it.number == 2 })
+        if(path.isNotBlank())
+            out.append("fd ").append(number).append(": ").append(path).append(10.toChar())
+    }
+    out.toString()
+}
+
+class MainActivity: ComponentActivity()"""
+)
 print("Integrated Chiaki HDMI/OCR layer applied.")
 
 
@@ -664,23 +857,39 @@ replace_once(
                     info.reason == android.app.ApplicationExitInfo.REASON_CRASH_NATIVE)
                 {
                     try {
-                        info.traceInputStream?.use { stream ->
-                            val bytes = stream.readBytes().take(2 * 1024 * 1024).toByteArray()
-                            val readable = StringBuilder()
-                            val run = StringBuilder()
-                            for(byteValue in bytes) {
-                                val value = byteValue.toInt() and 0xff
-                                if(value in 32..126 || value == 10 || value == 13 || value == 9) {
-                                    run.append(value.toChar())
-                                } else {
-                                    if(run.length >= 4) readable.append(run).append(10.toChar())
-                                    run.setLength(0)
+                        val trace = info.traceInputStream
+                        if(trace == null) {
+                            tombstoneText = "Native tombstone stream unavailable"
+                        } else {
+                            trace.use { stream ->
+                                val output = java.io.ByteArrayOutputStream()
+                                val buffer = ByteArray(16384)
+                                val maxBytes = 8 * 1024 * 1024
+                                var total = 0
+                                while(total < maxBytes) {
+                                    val count = stream.read(buffer, 0, minOf(buffer.size, maxBytes - total))
+                                    if(count < 0) break
+                                    if(count == 0) continue
+                                    output.write(buffer, 0, count)
+                                    total += count
                                 }
+                                val raw = output.toByteArray()
+                                val logDir = java.io.File(filesDir, "session_logs")
+                                logDir.mkdirs()
+                                val stamp = java.text.SimpleDateFormat("yyyy-MM-dd_HH-mm-ss-SSS", java.util.Locale.US)
+                                    .format(java.util.Date(info.timestamp))
+                                val rawFile = java.io.File(logDir, "chiaki_session_" + stamp + "_native-crash.tombstone.pb")
+                                rawFile.writeBytes(raw)
+                                val decoded = try {
+                                    decodeGlossaTombstone(raw)
+                                } catch(parseError: Exception) {
+                                    "Tombstone protobuf decode failed: " + parseError.toString()
+                                }
+                                val capNote = if(total >= maxBytes) " (capture limit reached)" else ""
+                                tombstoneText = "Native tombstone bytes: " + raw.size + capNote +
+                                    10.toChar() + "Raw tombstone saved: " + rawFile.name +
+                                    10.toChar() + decoded
                             }
-                            if(run.length >= 4) readable.append(run).append(10.toChar())
-                            tombstoneText = "Native tombstone bytes: " + bytes.size +
-                                10.toChar() + "Readable native trace strings:" + 10.toChar() +
-                                readable.toString().takeLast(12000)
                         }
                     } catch(traceError: Exception) {
                         tombstoneText = "Native tombstone read failed: " + traceError.toString()
