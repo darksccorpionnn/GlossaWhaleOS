@@ -1,0 +1,41 @@
+name: GlossaWhaleOS PS4 Chiaki Android remote engine
+
+on:
+  push:
+    branches:
+      - feat/glossawhale-v2-split-apps
+    paths:
+      - 'source-parts/build-chiaki-phone-engine.sh'
+      - '.github/workflows/ps4-engine-build.yml'
+  workflow_dispatch:
+
+jobs:
+  build-chiaki-engine:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - name: Install Android API, native NDK and CMake
+        run: |
+          sdkmanager --install "platforms;android-35" "build-tools;35.0.0" "ndk;28.2.13676358" "cmake;3.22.1"
+      - name: Build open-source Chiaki native Android companion
+        run: bash source-parts/build-chiaki-phone-engine.sh
+      - name: Verify package ID and native libraries
+        run: |
+          set -e
+          aapt="$ANDROID_HOME/build-tools/35.0.0/aapt"
+          "$aapt" dump badging dist-remote/GlossaWhaleOS-PS4-Chiaki-Remote-Motoru.apk |
+            grep "name='com.darkscorpion.glossawhale.ps4remote'"
+          unzip -l dist-remote/GlossaWhaleOS-PS4-Chiaki-Remote-Motoru.apk | grep '\.so$' | head
+          sha256sum dist-remote/*.apk
+      - name: Upload Android Remote Play engine and licensing notes
+        uses: actions/upload-artifact@v4
+        with:
+          name: GlossaWhaleOS-Chiaki-PS4-engine-Android
+          path: dist-remote/*
+          if-no-files-found: error
