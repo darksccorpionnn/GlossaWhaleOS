@@ -107,7 +107,19 @@ jobs:
           APK=remote/chiaki-ng-androidtv/app/build/outputs/apk/debug/app-debug.apk
           test -s "$APK"
           "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK" | grep -E "^package: name='com.darkscorpion.glossawhale.tv' versionCode='50'"
-          unzip -l "$APK" | grep -q 'lib/arm64-v8a/libchiaki-jni.so'
+          unzip -l "$APK" | grep 'lib/arm64-v8a/libchiaki-jni.so' >/dev/null
+
+      - name: Prepare direct TV test APK
+        run: |
+          mkdir -p dist
+          cp remote/chiaki-ng-androidtv/app/build/outputs/apk/debug/app-debug.apk dist/GlossaWhaleOS-TV-alpha9.apk
+
+      - name: Upload Alpha 9 TV APK separately
+        uses: actions/upload-artifact@v4
+        with:
+          name: GlossaWhaleOS-TV-alpha9
+          path: dist/GlossaWhaleOS-TV-alpha9.apk
+          if-no-files-found: error
 
       - name: Upload all debug APKs
         uses: actions/upload-artifact@v4
