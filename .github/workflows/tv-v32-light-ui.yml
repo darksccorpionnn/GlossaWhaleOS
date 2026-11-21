@@ -1,0 +1,86 @@
+name: GlossaWhaleOS TV 3.2 Lightweight Remote-Focus UI
+
+on:
+  push:
+    branches:
+      - feat/glossawhale-v2-split-apps
+    paths:
+      - 'v3-src/tv/**'
+      - 'v2-src/tv/SubtitleReceiverService.java'
+      - '.github/workflows/tv-v32-light-ui.yml'
+  workflow_dispatch:
+
+jobs:
+  build-tv-light:
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Restore functional TV services and replace only home screen UI
+        shell: bash
+        run: |
+          set -e
+          cat source-parts/alpha2-a.b64 source-parts/alpha2-b.b64 > /tmp/source-alpha2.zip.b64
+          base64 --decode /tmp/source-alpha2.zip.b64 > /tmp/source-alpha2.zip
+          echo "b44ff1d70cc2bd7e231d12a2d1a6495e4091e98b3c000255066112e04c735ee7  /tmp/source-alpha2.zip" | sha256sum --check
+          unzip -q /tmp/source-alpha2.zip
+          python3 source-parts/v2-stage.py
+
+          cp v3-src/tv/TvActivity.java \
+            GlossaWhaleOS/tv/src/main/java/com/darkscorpion/glossasub/tv/TvActivity.java
+
+          python3 - <<'PY'
+          from pathlib import Path
+          app=Path('GlossaWhaleOS/tv/build.gradle.kts')
+          text=app.read_text()
+          old='com.darkscorpion.glossawhale.tv.v21'
+          assert text.count(old)==1
+          text=text.replace(old,'com.darkscorpion.glossawhale.tv.v32')
+          assert text.count('versionCode = 220')==1
+          text=text.replace('versionCode = 220','versionCode = 320')
+          text=text.replace('versionName = "2.2.0-psn-account-prep"',
+                            'versionName = "3.2.0-fast-focus-tv"')
+          app.write_text(text)
+
+          manifest=Path('GlossaWhaleOS/tv/src/main/AndroidManifest.xml')
+          xml=manifest.read_text()
+          assert xml.count('GlossaWhaleOS 2.1 TV')==1
+          manifest.write_text(xml.replace('GlossaWhaleOS 2.1 TV',
+                                         'GlossaWhaleOS 3.2 TV'))
+          PY
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: ''
+      - name: Install Android SDK platform
+        run: sdkmanager "platforms;android-35" "build-tools;35.0.0" "platform-tools"
+
+      - name: Compile fast, remote-friendly TV APK
+        uses: gradle/gradle-build-action@v3
+        with:
+          gradle-version: '8.11.1'
+          arguments: -p GlossaWhaleOS --no-daemon --stacktrace :tv:assembleDebug
+
+      - name: Verify separate TV package
+        run: |
+          set -e
+          mkdir -p dist
+          cp GlossaWhaleOS/tv/build/outputs/apk/debug/tv-debug.apk \
+            dist/GlossaWhaleOS-TV-3.2-Hafif-Kumanda-Arayuzu.apk
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging \
+            dist/GlossaWhaleOS-TV-3.2-Hafif-Kumanda-Arayuzu.apk |
+            grep "name='com.darkscorpion.glossawhale.tv.v32'"
+          sha256sum dist/*.apk
+
+      - name: Publish installable TV app
+        uses: actions/upload-artifact@v4
+        with:
+          name: GlossaWhaleOS-TV-3.2-Light-Remote-Focus
+          path: dist/*.apk
+          if-no-files-found: error
