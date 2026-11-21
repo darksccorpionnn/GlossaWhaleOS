@@ -25,6 +25,10 @@ jobs:
       - name: Install Android API, native NDK and CMake
         run: |
           sdkmanager --install "platforms;android-35" "build-tools;35.0.0" "ndk;28.2.13676358" "cmake;3.22.1"
+      - name: Install protobuf compiler for native Chiaki JNI
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y protobuf-compiler
       - name: Build open-source Chiaki native Android companion
         run: bash source-parts/build-chiaki-phone-engine.sh
       - name: Verify package ID and native libraries
