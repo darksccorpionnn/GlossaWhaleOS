@@ -2,6 +2,7 @@
 package com.metallic.chiaki.glossa;
 
 import org.json.JSONObject;
+import android.content.SharedPreferences;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.io.OutputStream;
@@ -28,6 +29,10 @@ public final class GlossaTvClient {
     }
 
     public static String request(String ip,String pin,String text) {
+        return request(ip,pin,text,null);
+    }
+
+    public static String request(String ip,String pin,String text,SharedPreferences settings) {
         if(!validIp(ip) || pin==null || !pin.matches("[0-9]{6}"))
             return "TV IP veya 6 haneli kod geçersiz";
         HttpURLConnection c=null;
@@ -43,8 +48,17 @@ public final class GlossaTvClient {
                 c.setRequestMethod("POST");
                 c.setDoOutput(true);
                 c.setRequestProperty("Content-Type","application/json; charset=utf-8");
-                byte[] bytes=new JSONObject().put("text",text).put("duration",3600)
-                    .toString().getBytes(StandardCharsets.UTF_8);
+                JSONObject payload=new JSONObject().put("text",text).put("duration",3600);
+                if(settings!=null) {
+                    JSONObject style=new JSONObject()
+                        .put("size",settings.getInt("style_size",26))
+                        .put("color",settings.getInt("style_color",0xFFFFFFFF))
+                        .put("background",settings.getInt("style_background",0xE5081020))
+                        .put("x",settings.getInt("style_x",50))
+                        .put("y",settings.getInt("style_y",87));
+                    payload.put("style",style);
+                }
+                byte[] bytes=payload.toString().getBytes(StandardCharsets.UTF_8);
                 c.setFixedLengthStreamingMode(bytes.length);
                 try(OutputStream out=c.getOutputStream()) {out.write(bytes);}
             }
