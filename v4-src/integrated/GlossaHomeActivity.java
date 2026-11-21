@@ -96,6 +96,9 @@ public final class GlossaHomeActivity extends Activity {
         TextView psn=theme.button(this,"♙  PSN Hesabım / Account ID Al",true);
         psn.setOnClickListener(v->startActivity(new Intent(this,PsnAccountActivity.class)));
         add(tools,psn,11);
+        TextView remoteSettings=theme.button(this,"◉  Görüntü ve kumanda ayarları",false);
+        remoteSettings.setOnClickListener(v->startActivity(new Intent(this,GlossaRemoteSettingsActivity.class)));
+        add(tools,remoteSettings,11);
         TextView register=theme.button(this,"＋  PS4 bul ve eşleştir",false);
         register.setOnClickListener(v->startActivity(new Intent(this,GlossaConsolesActivity.class)));
         add(tools,register,0);
