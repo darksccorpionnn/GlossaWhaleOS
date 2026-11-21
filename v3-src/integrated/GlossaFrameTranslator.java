@@ -304,7 +304,8 @@ public final class GlossaFrameTranslator {
         report("✓ Çeviri "+elapsed+" ms"+(cacheHit?" • önbellek":"")+" • TV'ye gönderiliyor");
         String selectedHost=host,selectedPin=pin;
         network.execute(() -> {
-            String answer=GlossaTvClient.request(selectedHost,selectedPin,text);
+            String answer=GlossaTvClient.request(selectedHost,selectedPin,text,
+                activity.getSharedPreferences(GlossaSettingsActivity.PREF,Activity.MODE_PRIVATE));
             main.post(() -> {
                 if(closed||!started) return;
                 if("OK".equals(answer))
