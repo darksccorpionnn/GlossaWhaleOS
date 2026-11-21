@@ -67,6 +67,11 @@ public final class GlossaHomeActivity extends Activity {
             "PS4 bağlantısı, TV alıcısı ve çeviri tek telefon uygulamasında.");
         TextView engine=theme.text(this,"● PS4 motoru hazır  ·  Chiaki dahili",15,true,theme.accent);
         add(statusCard,engine,11);
+        String savedPsn=getSharedPreferences("glossa_psn",MODE_PRIVATE).getString("account_id","");
+        TextView account=theme.text(this,savedPsn.isEmpty()?
+            "○ PSN Account ID eklenmedi":"● PSN Account ID kayıtlı",14,true,
+            savedPsn.isEmpty()?theme.muted:theme.accent);
+        add(statusCard,account,11);
         SharedPreferences p=getSharedPreferences(GlossaTheme.PREF,MODE_PRIVATE);
         String ip=p.getString("tv_ip","");
         tvState=theme.text(this,ip.isEmpty()?
@@ -88,6 +93,9 @@ public final class GlossaHomeActivity extends Activity {
         TextView themes=theme.button(this,"◈  Renk temaları ve özel renk",false);
         themes.setOnClickListener(v->startActivity(new Intent(this,GlossaThemeActivity.class)));
         add(tools,themes,11);
+        TextView psn=theme.button(this,"♙  PSN Hesabım / Account ID Al",true);
+        psn.setOnClickListener(v->startActivity(new Intent(this,PsnAccountActivity.class)));
+        add(tools,psn,11);
         TextView register=theme.button(this,"＋  PS4'e yeni hesap eşleştir",false);
         register.setOnClickListener(v->startActivity(new Intent(this,RegistActivity.class)));
         add(tools,register,0);
