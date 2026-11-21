@@ -18,7 +18,7 @@ app=Path('android/app/build.gradle')
 gradle=app.read_text()
 before='applicationId "com.metallic.chiaki"'
 assert gradle.count(before)==1, 'Expected official Chiaki Android application ID'
-gradle=gradle.replace(before,'applicationId "com.darkscorpion.glossawhale.ps4remote"')
+gradle=gradle.replace(before,'applicationId "com.darkscorpion.glossawhale.unifiedv3"')
 deps='dependencies {'
 assert gradle.count(deps)==1
 gradle=gradle.replace(deps,deps+"\n    implementation 'com.google.mlkit:text-recognition:16.0.1'\n    implementation 'com.google.mlkit:translate:17.0.3'",1)
@@ -38,7 +38,7 @@ for p in src.rglob('*'):
     except UnicodeError:
         continue
     changed=content.replace('com.metallic.chiaki.fileprovider',
-        'com.darkscorpion.glossawhale.ps4remote.fileprovider')
+        'com.darkscorpion.glossawhale.unifiedv3.fileprovider')
     if changed!=content:
         p.write_text(changed)
 
