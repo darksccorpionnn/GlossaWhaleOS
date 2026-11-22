@@ -1,0 +1,46 @@
+name: GlossaWhaleOS 4.4 Android build toolchain
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/glossa44-toolchain.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  tools:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: ''
+      - name: Install Android SDK
+        run: |
+          sdkmanager "platforms;android-35" "build-tools;35.0.0"
+      - name: Download Android decompiler and DEX compiler
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p toolkit
+          curl --fail --location --retry 3 --silent --show-error --output toolkit/apktool.jar \
+            https://github.com/iBotPeaches/Apktool/releases/download/v2.12.1/apktool_2.12.1.jar
+          curl --fail --location --retry 3 --silent --show-error --output toolkit/r8.jar \
+            https://dl.google.com/dl/android/maven2/com/android/tools/r8/8.6.27/r8-8.6.27.jar
+          cp "$ANDROID_HOME/platforms/android-35/android.jar" toolkit/android.jar
+          cp "$ANDROID_HOME/build-tools/35.0.0/lib/apksigner.jar" toolkit/apksigner.jar
+          echo "apktool.sha256=$(sha256sum toolkit/apktool.jar | cut -d ' ' -f1)" > toolkit/checksums.txt
+          (cd toolkit && sha256sum *.jar > SHA256SUMS)
+          java -cp toolkit/r8.jar com.android.tools.r8.D8 --help > toolkit/d8-help.txt
+          java -jar toolkit/apktool.jar --version > toolkit/apktool-version.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: glossawhale44-android-toolchain
+          path: toolkit/
+          if-no-files-found: error
+          retention-days: 3
